@@ -1,0 +1,710 @@
+tests run with: /Users/alipeles1/code/acceptance-worktrees/212-task-context/.venv/bin/python -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+Task completion: NO-MATERIAL-GAPS
+
+9 obligation(s) addressed and strongly supported by discriminating tests; 5 boundary obligation(s) confirmed from code evidence, which is the only kind that applies to them.
+
+Obligations:
+
+  1. A task file may carry an optional `## Context` section, and the system accepts task files both with and without it; the section is treated as background (problem being fixed, current behavior, measurements) and not as a deliverable of the change.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/requirement/task_file.py#@@ -28,6 +28,7 @@ _CONSTRAINTS = {"constraints"}
+         1.2  src/acceptance/requirement/task_file.py#@@ -66,6 +74,7 @@ class ParsedTaskFile(PersistableModel):
+         1.3  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         1.4  tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+         1.5  tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+         1.6  tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+         1.7  tests/requirement/test_task_context.py::test_adding_context_does_not_move_mandate_coverage
+
+  2. Parsing a task file records the Context section as its own field on the parsed task-file result, separate from the requirement sections and other fields.
+       requirements: task-02
+       code evidence: addressed
+         2.1  src/acceptance/requirement/task_file.py#@@ -66,6 +74,7 @@ class ParsedTaskFile(PersistableModel):
+         2.2  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         2.3  tests/requirement/test_task_context.py::test_a_context_paragraph_gets_no_requirement_id
+         2.4  tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+         2.5  tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+         2.6  tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block
+         2.7  tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+
+  3. The Context field recorded by parsing a task file holds its content as blocks, and each block carries a span that points back to its location in the source task file.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/requirement/task_file.py#@@ -66,6 +74,7 @@ class ParsedTaskFile(PersistableModel):
+         3.2  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+         3.4  tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+         3.5  tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block
+         3.6  tests/requirement/test_task_context.py::test_every_block_kind_under_context_is_context
+         3.7  tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+         3.8  tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+
+  4. Context section content is not reported as unread source: when a task file is parsed and the unread-source report is produced, the Context section's blocks do not appear in it.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         4.2  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         4.3  tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+         4.4  tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block
+         4.5  tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+         4.6  tests/requirement/test_task_context.py::test_the_same_text_under_an_unrecognised_heading_still_bounds_coverage
+
+  5. Context section blocks are recorded without requirement ids and without dispositions: parsing a task file assigns no requirement id to any Context block and produces no disposition for it.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/requirement/task_file.py#@@ -51,7 +52,14 @@ class ParsedTaskFile(PersistableModel):
+         5.2  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         5.3  src/acceptance/requirement/obligations.py#@@ -573,6 +579,38 @@ def _user_prompt(
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         5.4  tests/requirement/test_task_context.py::test_a_context_paragraph_gets_no_requirement_id
+         5.5  tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+         5.6  tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+         5.7  tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+
+  6. Mandate coverage counts are independent of the Context section: adding or removing Context blocks leaves the coverage counts identical.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         6.2  tests/requirement/test_task_context.py::test_a_context_paragraph_gets_no_requirement_id
+         6.3  tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+         6.4  tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+         6.5  tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+         6.6  tests/requirement/test_task_context.py::test_adding_context_does_not_move_mandate_coverage
+
+  7. Decomposition presents the task file's context to the model labelled as context and kept apart from the list of requirements.
+       requirements: task-03
+       code evidence: addressed
+         7.1  src/acceptance/requirement/obligations.py#@@ -519,6 +519,7 @@ def _user_prompt(
+         7.2  src/acceptance/requirement/obligations.py#@@ -545,8 +546,13 @@ def _user_prompt(
+         7.3  src/acceptance/requirement/obligations.py#@@ -573,6 +579,38 @@ def _user_prompt(
+         7.4  src/acceptance/requirement/obligations.py#@@ -830,6 +868,7 @@ def _ask_about(
+         7.5  src/acceptance/requirement/obligations.py#@@ -847,7 +886,7 @@ def _ask_about(
+         7.6  src/acceptance/requirement/obligations.py#@@ -1117,6 +1156,7 @@ def decompose(
+         7.7  src/acceptance/requirement/obligations.py#@@ -1175,6 +1215,7 @@ def decompose(
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         7.8  tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+         7.9  tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+
+  8. The context background supplied to the model is used as background only: the model is not asked to account for it, so no obligation or disposition is required of the model for the context content.
+       requirements: task-03
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -545,8 +546,13 @@ def _user_prompt(
+         8.2  src/acceptance/requirement/obligations.py#@@ -573,6 +579,38 @@ def _user_prompt(
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         8.3  tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+         8.4  tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+         8.5  tests/requirement/test_task_context.py::test_the_same_paragraph_under_task_gets_a_requirement_id
+
+  9. Preserve the existing behavior for a task file with no Context section: it produces exactly the same model requests and the same results as before this change.
+       requirements: task-03
+       code evidence: addressed
+         9.1  src/acceptance/requirement/obligations.py#@@ -545,8 +546,13 @@ def _user_prompt(
+         9.2  src/acceptance/requirement/obligations.py#@@ -573,6 +579,38 @@ def _user_prompt(
+         9.3  src/acceptance/requirement/task_file.py#@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         9.4  tests/requirement/test_task_context.py::test_a_file_without_context_parses_exactly_as_before
+
+  10. The spec's description of the task file format (§7.1) includes a description of the Context section.
+       requirements: task-04
+       code evidence: addressed
+         10.1  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -135,6 +135,17 @@ Add support for indirect circular references.
+       test evidence: not required — This is a documentation property of the spec text, which a reader confirms by reading §7.1; no test would add anything.
+
+  11. The repository's contributor guide, CLAUDE.md, contains guidance stating when a task-file author should use the Context section.
+       requirements: task-04
+       code evidence: addressed
+         11.1  CLAUDE.md#@@ -368,7 +368,11 @@ and task files are already committed under `tests/fixtures/rating-stability/`.
+       test evidence: not required — This is a documentation-content property of CLAUDE.md that a reader confirms by reading the file; no executable behavior exists for a test to exercise.
+
+  12. The change does not alter how background that is not under a Context heading is recognised.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 17 changes across 6 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  13. The change does not add support for Context sections nested inside other sections.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 17 changes across 6 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  14. The change does not add a Context section to the existing task files under `tests/fixtures/` and `dogfood-logs/`.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 17 changes across 6 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+Mandate coverage: 7 of 7 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new test helper in tests/support.py (client_returning_capturing_prompts) is shared test infrastructure. It supports verifying the prompt, but no obligation calls for adding a shared helper.
+       tests/support.py#@@ -630,6 +630,27 @@ def client_returning(
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  context-section-optional-background
+    [scope_too_narrow] context-section-optional-background/subheading-in-context-escapes-section
+      Every heading node, at any level, resets `section`. A `### Measurements` or `### Today's behaviour` sub-heading inside `## Context` therefore ends the context section. The blocks after it go to `unclaimed`, or to behavior or constraints if the sub-heading name matches one of those. Background content is then not treated as context and can be read as mandate.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [not_wired] context-section-optional-background/context-not-counted-as-read-source
+      A `context` field was added to `ParsedTaskFile`, but the change does not show the unread-source and total-coverage accounting being updated. If that accounting sums only the old lists, Context blocks are reported as unread or uncovered, or the file is rejected or flagged. A task file with a Context section would then not be cleanly accepted.
+      src/acceptance/requirement/task_file.py#2
+      src/acceptance/requirement/task_file.py#3
+      pairs: 60 put to the model, 54 skipped once the defect was covered
+    [other] context-section-optional-background/context-block-obligation-not-rejected
+      Context is shown to the decomposer only with a prompt instruction not to derive obligations from it. Nothing in the delivered code stops the model from returning an obligation that restates Context text, for example current behaviour that must be kept. If the quote check also accepts text from Context, background can still become an obligation.
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/obligations.py#5
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [not_wired] context-section-optional-background/context-not-passed-on-some-decompose-path
+      Context is threaded through `_ask_about` at only two call sites. Any other decomposition or retry path that builds the prompt without `parsed.context` would silently drop the background, or would behave differently with and without the section.
+      src/acceptance/requirement/obligations.py#6
+      src/acceptance/requirement/obligations.py#7
+      src/acceptance/requirement/obligations.py#1
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  parse-records-context-field
+    [scope_too_narrow] parse-records-context-field/subheading-ends-context-section
+      Every heading, at any level, resets `section`. A `### Measurements` subheading inside `## Context` therefore ends the Context section. Blocks after it are not recorded in `context` and probably fall to `unclaimed`, so only the content before the first subheading is captured.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 12 put to the model, 102 skipped once the defect was covered
+    [missing_case] parse-records-context-field/context-heading-match-exact
+      The Context section is recognised only when the lowercased heading text equals exactly `context`. Variants such as `Context:` or `Background` do not match, so that content is not recorded in `context`. The heading level is not checked at all, so a `# Context` heading also matches.
+      src/acceptance/requirement/task_file.py#1
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [other] parse-records-context-field/container-blocks-in-context-mishandled
+      The Context branch handles each node as paragraph, list, or 'anything else', and the 'anything else' case goes to `_block_span`. Container nodes such as blockquotes are meant to be descended into rather than spanned. If a container reaches this branch it would be spanned whole, or its inner blocks might not be captured. That would break the total-coverage property, so the `context` content would be wrong in shape.
+      src/acceptance/requirement/task_file.py#4
+      src/acceptance/requirement/task_file.py#1
+      pairs: 5 put to the model, 109 skipped once the defect was covered
+
+  context-blocks-carry-source-spans
+    [scope_too_narrow] context-blocks-carry-source-spans/subheading-ends-context-section
+      Any heading inside the Context section, such as a `### Measurements` subheading, replaces `section` with that heading's text. Blocks after it are no longer in `_CONTEXT`. They go to `unclaimed` or another list, so the recorded Context field misses blocks that belong to the Context section.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [other] context-blocks-carry-source-spans/non-paragraph-block-span-wrong
+      Non-paragraph, non-list Context blocks (tables, fenced code, quotes) are spanned by `_block_span`, a different helper from the `_span` used for paragraphs. If it computes offsets or lines differently, for example by ignoring `line_offsets`, the span may not map back to the block's real position in the file.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [wrong_output_shape] context-blocks-carry-source-spans/context-list-items-span-granularity
+      List blocks in Context go through `_emit_list`, which may emit spans per item. If it flattens or skips nested lists or items, or emits one span for the whole list, the Context blocks may not match the block unit used elsewhere. Some nested content may then have no span or an imprecise one.
+      src/acceptance/requirement/task_file.py#4
+      src/acceptance/requirement/task_file.py#3
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [missing_case] context-blocks-carry-source-spans/container-nodes-in-context-skipped
+      The context branch is checked per node of the walk. Container nodes such as blockquotes are descended into rather than spanned. A blockquote or other container inside Context may be walked in a way that skips its inner blocks or spans them wrongly. Those inner blocks would then be absent from `context` or lack correct spans.
+      src/acceptance/requirement/task_file.py#4
+      src/acceptance/requirement/task_file.py#1
+      pairs: 5 put to the model, 109 skipped once the defect was covered
+
+  context-not-reported-unread
+    [not_wired] context-not-reported-unread/unread-report-ignores-context-list
+      The unread-source report is computed outside the shown change, probably by comparing source blocks with the union of the known span lists. The diff adds `context` to ParsedTaskFile but never adds it to that union. If so, every Context block still counts as uncovered and is reported unread, even though the parser collected it.
+      src/acceptance/requirement/task_file.py#2
+      src/acceptance/requirement/task_file.py#3
+      pairs: 12 put to the model, 102 skipped once the defect was covered
+    [scope_too_narrow] context-not-reported-unread/context-subheading-ends-section
+      Every heading, whatever its level, resets `section` to its own text. A subheading inside Context (for example `### Measurements`) sets `section` to a name that is not in `_CONTEXT`. Later blocks under it then fall to the paragraph or other branches and land in `unclaimed`, which is what the report reads as unread source.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [missing_case] context-not-reported-unread/context-heading-match-exact-only
+      The Context section is recognised only when the lowercased, stripped heading text equals exactly `context`. Variants such as `Context:` or `Background / Context`, or a Context heading written with emphasis markup, do not match. Their blocks fall into `unclaimed` and are reported as unread.
+      src/acceptance/requirement/task_file.py#1
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+
+  context-blocks-have-no-requirement-id-or-disposition
+    [scope_too_narrow] context-blocks-have-no-requirement-id-or-disposition/subheading-ends-context-section
+      The parser sets `section` from every heading, whatever its level. A sub-heading inside Context (e.g. `### Measurements`) replaces `section` with a name that is not 'context'. The blocks after it are then routed to `unclaimed` or to another list, not to `context`, so part of the Context section is not recorded as context.
+      src/acceptance/requirement/task_file.py#4
+      src/acceptance/requirement/task_file.py#1
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [not_wired] context-blocks-have-no-requirement-id-or-disposition/registry-not-guarded-against-context-field
+      The diff adds `context` to `ParsedTaskFile` but does not touch `build_registry`. If the registry builder iterates over every TextSpan list on the parsed model, or over a list that now includes `context`, Context blocks would get `task-*` requirement ids and dispositions. The diff contains no test or guard showing that `context` is excluded.
+      src/acceptance/requirement/task_file.py#3
+      src/acceptance/requirement/task_file.py#2
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [other] context-blocks-have-no-requirement-id-or-disposition/context-spans-reused-as-quotable-source
+      Context text is shown in the decomposer prompt, but if its spans are also offered as quotable source or counted as covered mandate, the decomposer could derive obligations from Context. Those obligations would be attached to a requirement entry or disposition for the Context block.
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/obligations.py#6
+      src/acceptance/requirement/obligations.py#7
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+
+  context-does-not-move-coverage-counts
+    [scope_too_narrow] context-does-not-move-coverage-counts/context-subheading-leaks-to-unclaimed
+      The section is tracked only by the most recent heading text. A sub-heading inside Context (e.g. `### Measurements`) resets `section` to a name that is not 'context'. The following Context blocks then fall to the generic paragraph/list branches and land in `unclaimed` or other lists, so adding Context changes the unclaimed and coverage counts.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [not_wired] context-does-not-move-coverage-counts/unread-source-ignores-context
+      The `unread_source` / total-coverage computation is not shown being updated for the new `context` field. If it unions only the original lists, Context blocks count as unread source, and any coverage tally over the parsed file's fields shifts when Context is added.
+      src/acceptance/requirement/task_file.py#2
+      src/acceptance/requirement/task_file.py#3
+      pairs: 28 put to the model, 86 skipped once the defect was covered
+    [unenforced_on_one_path] context-does-not-move-coverage-counts/registry-includes-context-field
+      `build_registry` and the coverage accounting were not touched by the diff. If they iterate over every `TextSpan` list field of `ParsedTaskFile` generically, the new `context` list is given requirement ids and dispositions, so the total and uncovered requirement counts grow when Context is present.
+      src/acceptance/requirement/task_file.py#3
+      src/acceptance/requirement/obligations.py#6
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [other] context-does-not-move-coverage-counts/context-in-prompt-shifts-derivation
+      The Context text is placed in the decomposer prompt on both call paths. The model may derive obligations from it, or answer for requirements differently, so obligation and coverage counts change with Context. Only prompt wording discourages this, and nothing in the code enforces it.
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/obligations.py#5
+      src/acceptance/requirement/obligations.py#7
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+
+  context-shown-labelled-and-separate
+    [scope_too_narrow] context-shown-labelled-and-separate/context-subheadings-dropped
+      Context is recognised only while the most recent heading text is exactly 'context', whatever its level. A sub-heading under `## Context` (for example `### Measurements`) resets `section` to something else. The blocks beneath it then go to `unclaimed`, or to whichever section matches, and never reach `parsed.context`. They are therefore never shown to the model as background.
+      src/acceptance/requirement/task_file.py#4
+      src/acceptance/requirement/task_file.py#1
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [not_wired] context-shown-labelled-and-separate/context-not-passed-on-every-decompose-path
+      Context is threaded only through `_ask_about` and the two call sites shown. Any other path that builds a decomposition request through `_user_prompt` or `_ask_about` would omit the context and send a prompt with no background block. `_user_prompt` also defaults `context` to None, so a caller that forgets the argument gets no error.
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#5
+      src/acceptance/requirement/obligations.py#6
+      src/acceptance/requirement/obligations.py#7
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  context-not-an-accountable-requirement
+    [scope_too_narrow] context-not-an-accountable-requirement/subheading-ends-context-section
+      The parser tracks `section` from every heading. A `###` subheading inside `## Context` (e.g. 'Measurements') changes `section` to something that is not 'context'. The rest of the background then falls into `unclaimed` or a different section, so it is not presented as labelled background. If the subheading's name matches a mandate section, it could even be read as requirement text.
+      src/acceptance/requirement/task_file.py#4
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+    [other] context-not-an-accountable-requirement/system-prompt-not-told-about-background
+      Only the user prompt gained a BACKGROUND block. `_SYSTEM_PROMPT` (INSTRUCTIONS block) is unchanged. It may still tell the model to derive obligations from everything it is shown. That would conflict with the background label and let the model derive obligations from the context text.
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/obligations.py#5
+      pairs: 12 put to the model, 102 skipped once the defect was covered
+    [other] context-not-an-accountable-requirement/no-guard-against-context-derived-results
+      Keeping context out of the obligation set rests entirely on the prompt wording. Nothing in the diff rejects or filters a model answer whose obligation or source quote comes from the context text. Context spans are not excluded from any quotable-span validation, so the model could return an obligation that accounts for the context.
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/obligations.py#5
+      src/acceptance/requirement/obligations.py#6
+      pairs: 12 put to the model, 102 skipped once the defect was covered
+    [not_wired] context-not-an-accountable-requirement/context-not-passed-on-other-prompt-paths
+      `context` defaults to None in `_user_prompt` and is a new required parameter of `_ask_about`. Only two `decompose` call sites were updated. Any other path that builds the user prompt (for example a revision or retry pass) would silently omit the background, or would be inconsistent in how it labels it.
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#6
+      src/acceptance/requirement/obligations.py#7
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  no-context-task-file-unchanged-behavior
+    [prior_behavior_altered] no-context-task-file-unchanged-behavior/parsed-model-gains-context-field
+      ParsedTaskFile gains a new always-present `context` field (default empty list). For a task file with no Context section, the serialized parsed model now carries an extra `context: []` key. If anything hashes, fingerprints, persists or replays that model (cache keys, recorded transcripts, stored review state), its output for context-free files differs from before, even though the prompt text is the same.
+      src/acceptance/requirement/task_file.py#3
+      src/acceptance/requirement/task_file.py#2
+      pairs: 4 put to the model, 110 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] context-blocks-carry-source-spans/context-list-items-span-granularity x 113 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] context-not-an-accountable-requirement/context-not-passed-on-other-prompt-paths x 113 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] context-section-optional-background/context-not-passed-on-some-decompose-path x 113 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] context-shown-labelled-and-separate/context-not-passed-on-every-decompose-path x 113 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] context-blocks-carry-source-spans/container-nodes-in-context-skipped x 109 candidate test(s), ranked 6 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too, tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block, tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+  [defect_already_covered] context-blocks-carry-source-spans/non-paragraph-block-span-wrong x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_every_block_kind_under_context_is_context, tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+  [defect_already_covered] context-blocks-carry-source-spans/subheading-ends-context-section x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span, tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too, tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block
+  [defect_already_covered] context-blocks-have-no-requirement-id-or-disposition/context-spans-reused-as-quotable-source x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition, tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+  [defect_already_covered] context-blocks-have-no-requirement-id-or-disposition/registry-not-guarded-against-context-field x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_gets_no_requirement_id
+  [defect_already_covered] context-blocks-have-no-requirement-id-or-disposition/subheading-ends-context-section x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+  [defect_already_covered] context-does-not-move-coverage-counts/context-in-prompt-shifts-derivation x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+  [defect_already_covered] context-does-not-move-coverage-counts/context-subheading-leaks-to-unclaimed x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span, tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+  [defect_already_covered] context-does-not-move-coverage-counts/registry-includes-context-field x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_gets_no_requirement_id
+  [defect_already_covered] context-does-not-move-coverage-counts/unread-source-ignores-context x 86 candidate test(s), ranked 29 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_adding_context_does_not_move_mandate_coverage
+  [defect_already_covered] context-not-an-accountable-requirement/no-guard-against-context-derived-results x 102 candidate test(s), ranked 13 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+  [defect_already_covered] context-not-an-accountable-requirement/subheading-ends-context-section x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_the_same_paragraph_under_task_gets_a_requirement_id
+  [defect_already_covered] context-not-an-accountable-requirement/system-prompt-not-told-about-background x 102 candidate test(s), ranked 13 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+  [defect_already_covered] context-not-reported-unread/context-heading-match-exact-only x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span, tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block, tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+  [defect_already_covered] context-not-reported-unread/context-subheading-ends-section x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span, tests/requirement/test_task_context.py::test_the_same_text_under_an_unrecognised_heading_still_bounds_coverage
+  [defect_already_covered] context-not-reported-unread/unread-report-ignores-context-list x 102 candidate test(s), ranked 13 to 114
+    not asked: the defect was already covered by tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+  [defect_already_covered] context-section-optional-background/context-block-obligation-not-rejected x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_produces_no_obligation_and_no_disposition
+  [defect_already_covered] context-section-optional-background/context-not-counted-as-read-source x 54 candidate test(s), ranked 61 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too, tests/requirement/test_task_context.py::test_adding_context_does_not_move_mandate_coverage
+  [defect_already_covered] context-section-optional-background/subheading-in-context-escapes-section x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span
+  [defect_already_covered] context-shown-labelled-and-separate/context-subheadings-dropped x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+  [defect_already_covered] no-context-task-file-unchanged-behavior/parsed-model-gains-context-field x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_file_without_context_parses_exactly_as_before
+  [defect_already_covered] parse-records-context-field/container-blocks-in-context-mishandled x 109 candidate test(s), ranked 6 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+  [defect_already_covered] parse-records-context-field/context-heading-match-exact x 110 candidate test(s), ranked 5 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_is_recorded_as_context_with_an_exact_span, tests/requirement/test_task_context.py::test_adding_context_changes_the_prompt_only_by_the_context_block, tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+  [defect_already_covered] parse-records-context-field/subheading-ends-context-section x 102 candidate test(s), ranked 13 to 114
+    not asked: the defect was already covered by tests/requirement/test_task_context.py::test_a_context_paragraph_gets_no_requirement_id, tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too, tests/requirement/test_task_context.py::test_every_decompose_call_shows_the_context_labelled_as_background
+
+Running the project's tests:
+  the project's tests were run: 28 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [killed, NOT COUNTED] context-blocks-carry-source-spans/container-nodes-in-context-skipped
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/task_file.py lines 97-98:
+      -             elif node.type in _LISTS:
+      -                 _emit_list(text, line_offsets, node, result.context)
+      (lines deleted)
+    caught by (1):
+      tests/requirement/test_task_context.py::test_every_block_kind_under_context_is_context
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 109 skipped once the defect was covered
+
+  [killed, NOT COUNTED] context-blocks-carry-source-spans/context-list-items-span-granularity
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/task_file.py lines 98-98:
+      -                 _emit_list(text, line_offsets, node, result.context)
+      +                 result.context.append(_block_span(text, line_offsets, node))
+    caught by (1):
+      tests/requirement/test_task_context.py::test_every_block_kind_under_context_is_context
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 113 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] context-blocks-carry-source-spans/non-paragraph-block-span-wrong
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/task_file.py lines 100-100:
+      -                 result.context.append(_block_span(text, line_offsets, node))
+      +                 result.context.append(_block_span(text, [o + 1 for o in line_offsets], node))
+    no test caught it; 114 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+
+  [already_present] context-blocks-carry-source-spans/subheading-ends-context-section
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 sets `section` to the text of every heading, so a `### Measurements` subheading under `## Context` makes `section in _CONTEXT` false and later blocks go to unclaimed or behavior. This is the DEFECTIVE behaviour. The repair keeps `section` unchanged when a deeper heading (not h1 or h2) appears inside a Context section. It hardcodes h2 as the Context heading level because the edit has to stay inside the offered region, where no heading-level variable can be added.
+
+  [survived, NOT COUNTED] context-blocks-have-no-requirement-id-or-disposition/context-spans-reused-as-quotable-source
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 1156-1156:
+      -             quotable_spans(batch.items[0].text),
+      +             [*quotable_spans(batch.items[0].text), *[offerable(block.text) for block in parsed.context]],
+    no test caught it; 114 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+
+  [not_mutable] context-blocks-have-no-requirement-id-or-disposition/registry-not-guarded-against-context-field
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    The defect is about what `build_registry` reads, but that function is not in the offered regions or the surrounding code. I can only see the `ParsedTaskFile` docstring and field list, which say `build_registry` never gives `context` a requirement id. I cannot tell whether `build_registry` names its four lists explicitly or iterates generically. Any edit in these regions would only change the model, not the registry builder, so it would not create the named defect.
+
+  [already_present] context-blocks-have-no-requirement-id-or-disposition/subheading-ends-context-section
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 assigns `section` from every heading regardless of level. A `###` sub-heading inside Context therefore replaces 'context', and later blocks go to `unclaimed` or another list, which is the DEFECTIVE behaviour. The repair keeps `section` as 'context' when the heading is h3 or deeper. Only h1 and h2 headings end the section. This hardcodes Context as a level-2 heading, per the stated `## Context`.
+
+  [survived, NOT COUNTED] context-does-not-move-coverage-counts/context-in-prompt-shifts-derivation
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 601-602:
+      -             "a requirement: it has no id, it needs no disposition, and no obligation "
+      -             "is derived from it. Use it only to understand the requirements below. "
+      +             "a requirement: it has no id, but derive obligations from it as well "
+      +             "as from the requirements. Use it to understand the requirements below. "
+    no test caught it; 114 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+
+  [already_present] context-does-not-move-coverage-counts/context-subheading-leaks-to-unclaimed
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 sets `section` to the text of every heading with no level tracking. A `### Measurements` sub-heading under `## Context` therefore replaces 'context', and the blocks after it fall through to the branches at lines 101-112 (`unclaimed` or a mandate list). That is the DEFECTIVE behaviour. The repair keeps `section` unchanged when a heading deeper than h2 appears while in a Context section. It assumes Context is an h2 heading.
+
+  [not_mutable] context-does-not-move-coverage-counts/registry-includes-context-field
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    The defect concerns how build_registry and the coverage accounting choose which ParsedTaskFile fields to read, but neither is shown. In decompose, parsed.context is only passed to _ask_about as prompt context, and the ParsedTaskFile docstring says build_registry never gives context a requirement id. That suggests the code currently does the expected behaviour, but I cannot confirm it without build_registry's source. The offered regions are a call argument and a field declaration, and neither can make the registry consume context. So I give no edit.
+
+  [not_mutable] context-does-not-move-coverage-counts/unread-source-ignores-context
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 86 skipped once the defect was covered
+    The offered regions are only the ParsedTaskFile docstring and its field declarations. The `unread_source` computation, `build_registry`, and any coverage tally over the parsed fields are not shown, so I cannot tell whether they include `context`. Editing the field list or the docstring would not make Context count as unread or enter the mandate totals, so any edit here would be invented.
+
+  [killed, NOT COUNTED] context-not-an-accountable-requirement/context-not-passed-on-other-prompt-paths
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 1218-1218:
+      -                 parsed.context,
+      +                 None,
+    caught by (1):
+      tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 113 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] context-not-an-accountable-requirement/no-guard-against-context-derived-results
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 1156-1156:
+      -             quotable_spans(batch.items[0].text),
+      +             quotable_spans(batch.items[0].text)
+      +             + [q for block in parsed.context for q in quotable_spans(block.text)],
+    no test caught it; 114 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [already_present] context-not-an-accountable-requirement/subheading-ends-context-section
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 sets `section` from every heading, including `###` subheadings. After a nested subheading under `## Context`, `section` is no longer in `_CONTEXT`, so later blocks go to `unclaimed`, `behavior`, or another section. That is the DEFECTIVE behaviour. The edit repairs it: a heading deeper than h2 no longer changes `section` while it is a context section.
+
+  [not_mutable] context-not-an-accountable-requirement/system-prompt-not-told-about-background
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    The defect is about the wording of `_SYSTEM_PROMPT`, which is defined outside both offered regions. Line 888 only passes it in as the INSTRUCTIONS block. I cannot see whether it tells the model to derive obligations from everything it is shown, so I cannot say whether the code is expected or defective. The user prompt and `_context_block` do label the background as non-requirement text, but that is only half of the question. Appending text at line 888 would inject new instructions instead of showing what the existing ones say, so I give no edit.
+
+  [already_present] context-not-reported-unread/context-heading-match-exact-only
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 lowercases and strips the heading text, and line 92 tests `section in _CONTEXT`, where _CONTEXT = {"context"} (line 31). That is set membership, so only the exact string `context` matches. `Context:` or `Background / Context` fall through to the unclaimed branches (lines 101-112). The repair is a substring match on the heading, so those variants route to `context`. I could not see _inline_content, so I cannot confirm how it handles emphasis markup.
+
+  [already_present] context-not-reported-unread/context-subheading-ends-section
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 sets `section` to the heading's own text for every heading, whatever its level. A subheading such as `### Measurements` inside Context therefore makes `section` something not in `_CONTEXT`, and later blocks fall through to the `unclaimed` branches at lines 101-112. That is the defective behaviour. The repair keeps `section` unchanged when the current section is Context and the heading is level 3 or deeper. This assumes the Context heading itself is level 1 or 2, which I could not confirm from the shown code.
+
+  [not_mutable] context-not-reported-unread/unread-report-ignores-context-list
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    The `unread_source` computation is not within the shown regions or the surrounding code. I can see only the ParsedTaskFile fields and docstring, so I cannot tell whether the union of known span lists includes `context`. No edit is offered.
+
+  [survived, NOT COUNTED] context-section-optional-background/context-block-obligation-not-rejected
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 892-892:
+      -     # Both id fields are constrained, and `source_quote` is the one that matters.
+      +     quotes = [*quotes, *(block.text for block in context)]
+      +     # Both id fields are constrained, and `source_quote` is the one that matters.
+    no test caught it; 114 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+
+  [not_mutable] context-section-optional-background/context-not-counted-as-read-source
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 54 skipped once the defect was covered
+    The offered regions show only the ParsedTaskFile docstring and field declarations. The unread_source and coverage accounting, and the parse routing that fills `context`, are not visible here, so I cannot tell whether `context` is summed or ignored. I will not guess an edit.
+
+  [killed, NOT COUNTED] context-section-optional-background/context-not-passed-on-some-decompose-path
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (refused_after_run): 15 of the 114 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 1217-1218:
+           -                 {"size": ONE_REQUIREMENT_PER_CALL},
+           -                 parsed.context,
+           +                 {"size": ONE_REQUIREMENT_PER_CALL},
+    injected at src/acceptance/requirement/obligations.py lines 1218-1218:
+      -                 parsed.context,
+      +                 None,
+    caught by (1):
+      tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 113 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [already_present] context-section-optional-background/subheading-in-context-escapes-section
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 91 sets `section` on every heading node regardless of level, so a `###` sub-heading inside `## Context` ends the context section. That is the DEFECTIVE behaviour. The repair records the level of the context heading and skips any deeper heading while still inside context, so blocks under sub-headings keep going to `context`.
+
+  [killed, NOT COUNTED] context-shown-labelled-and-separate/context-not-passed-on-every-decompose-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 1218-1218:
+      -                 parsed.context,
+      +                 [],
+    caught by (1):
+      tests/requirement/test_task_context.py::test_a_span_call_for_the_opening_summary_shows_the_context_too
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 113 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [already_present] context-shown-labelled-and-separate/context-subheadings-dropped
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Lines 89-91 set `section` to the text of every heading, so a sub-heading like `### Measurements` replaces 'context' and later blocks fail the `section in _CONTEXT` check at line 92. That is the defective behaviour. The repair records the heading level when a heading is seen and ignores deeper headings while in Context, so their blocks stay in `context`.
+
+  [already_present] no-context-task-file-unchanged-behavior/parsed-model-gains-context-field
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 77 declares `context: list[TextSpan] = Field(default_factory=list)` on ParsedTaskFile, which is always present and defaults to an empty list. A context-free file therefore serializes with an extra `context: []` key, which is the DEFECTIVE behaviour already in the code. The smallest repair would be to stop always emitting the field. Deleting line 77 does that, but it would also break any code that parses a Context section, so this is only a minimal repair sketch. The model would need to omit the field when it is empty, for example through a serializer, to preserve both behaviours. (the repair failed 73 of 114 candidate tests, too many to say anything about this defect)
+
+  [killed, NOT COUNTED] parse-records-context-field/container-blocks-in-context-mishandled
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/task_file.py lines 97-98:
+      -             elif node.type in _LISTS:
+      -                 _emit_list(text, line_offsets, node, result.context)
+      (lines deleted)
+    caught by (1):
+      tests/requirement/test_task_context.py::test_every_block_kind_under_context_is_context
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 109 skipped once the defect was covered
+
+  [already_present] parse-records-context-field/context-heading-match-exact
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 110 skipped once the defect was covered
+    Line 31 defines _CONTEXT = {"context"} and line 92 tests `section in _CONTEXT`, where section is the lowercased heading text from line 91. That is an exact match, so `Context:` or `Background` is not recognised. Heading level is never checked, so `# Context` matches too. The code already does the DEFECTIVE behaviour. The repair adds the common variants `context:` and `background` to the set, so these headings are recognised and their content goes into `context`.
+
+  [already_present] parse-records-context-field/subheading-ends-context-section
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    Line 91 sets `section` on every heading node regardless of level, so a `### Measurements` subheading inside `## Context` replaces `section` and later blocks in Context no longer reach the `section in _CONTEXT` branch. The repair keeps `section` when already in Context and the heading is deeper than h2. It assumes Context sits at h1 or h2, because the code does not track the Context heading's own level.
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  context-blocks-carry-source-spans/subheading-ends-context-section
+    Line 91 sets `section` to the text of every heading, so a `### Measurements` subheading under `## Context` makes `section in _CONTEXT` false and later blocks go to unclaimed or behavior. This is the DEFECTIVE behaviour. The repair keeps `section` unchanged when a deeper heading (not h1 or h2) appears inside a Context section. It hardcodes h2 as the Context heading level because the edit has to stay inside the offered region, where no heading-level variable can be added.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             if section not in _CONTEXT or node.tag in ("h1", "h2"):
+      +                 section = _inline_content(node).strip().lower()
+  context-blocks-have-no-requirement-id-or-disposition/subheading-ends-context-section
+    Line 91 assigns `section` from every heading regardless of level. A `###` sub-heading inside Context therefore replaces 'context', and later blocks go to `unclaimed` or another list, which is the DEFECTIVE behaviour. The repair keeps `section` as 'context' when the heading is h3 or deeper. Only h1 and h2 headings end the section. This hardcodes Context as a level-2 heading, per the stated `## Context`.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             # A deeper sub-heading inside Context does not end the Context section.
+      +             if not (section in _CONTEXT and node.tag in ("h3", "h4", "h5", "h6")):
+      +                 section = _inline_content(node).strip().lower()
+  context-does-not-move-coverage-counts/context-subheading-leaks-to-unclaimed
+    Line 91 sets `section` to the text of every heading with no level tracking. A `### Measurements` sub-heading under `## Context` therefore replaces 'context', and the blocks after it fall through to the branches at lines 101-112 (`unclaimed` or a mandate list). That is the DEFECTIVE behaviour. The repair keeps `section` unchanged when a heading deeper than h2 appears while in a Context section. It assumes Context is an h2 heading.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             # A sub-heading nested inside Context stays part of Context.
+      +             if not (section in _CONTEXT and node.tag not in ("h1", "h2")):
+      +                 section = _inline_content(node).strip().lower()
+  context-not-an-accountable-requirement/subheading-ends-context-section
+    Line 91 sets `section` from every heading, including `###` subheadings. After a nested subheading under `## Context`, `section` is no longer in `_CONTEXT`, so later blocks go to `unclaimed`, `behavior`, or another section. That is the DEFECTIVE behaviour. The edit repairs it: a heading deeper than h2 no longer changes `section` while it is a context section.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 91-91:
+      -             section = _inline_content(node).strip().lower()
+      +             if not (section in _CONTEXT and node.tag in ("h3", "h4", "h5", "h6")):
+      +                 section = _inline_content(node).strip().lower()
+  context-not-reported-unread/context-heading-match-exact-only
+    Line 91 lowercases and strips the heading text, and line 92 tests `section in _CONTEXT`, where _CONTEXT = {"context"} (line 31). That is set membership, so only the exact string `context` matches. `Context:` or `Background / Context` fall through to the unclaimed branches (lines 101-112). The repair is a substring match on the heading, so those variants route to `context`. I could not see _inline_content, so I cannot confirm how it handles emphasis markup.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 92-92:
+      -         elif section in _CONTEXT:
+      +         elif section is not None and any(key in section for key in _CONTEXT):
+  context-not-reported-unread/context-subheading-ends-section
+    Line 91 sets `section` to the heading's own text for every heading, whatever its level. A subheading such as `### Measurements` inside Context therefore makes `section` something not in `_CONTEXT`, and later blocks fall through to the `unclaimed` branches at lines 101-112. That is the defective behaviour. The repair keeps `section` unchanged when the current section is Context and the heading is level 3 or deeper. This assumes the Context heading itself is level 1 or 2, which I could not confirm from the shown code.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             # A deeper subheading inside Context stays part of Context.
+      +             if not (section in _CONTEXT and node.tag in ("h3", "h4", "h5", "h6")):
+      +                 section = _inline_content(node).strip().lower()
+  context-section-optional-background/subheading-in-context-escapes-section
+    Line 91 sets `section` on every heading node regardless of level, so a `###` sub-heading inside `## Context` ends the context section. That is the DEFECTIVE behaviour. The repair records the level of the context heading and skips any deeper heading while still inside context, so blocks under sub-headings keep going to `context`.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             level = int(node.tag[1:])
+      +             if section in _CONTEXT and level > locals().get("context_level", 0):
+      +                 continue
+      +             section = _inline_content(node).strip().lower()
+      +             context_level = level if section in _CONTEXT else 0
+  context-shown-labelled-and-separate/context-subheadings-dropped
+    Lines 89-91 set `section` to the text of every heading, so a sub-heading like `### Measurements` replaces 'context' and later blocks fail the `section in _CONTEXT` check at line 92. That is the defective behaviour. The repair records the heading level when a heading is seen and ignores deeper headings while in Context, so their blocks stay in `context`.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             level = int(node.tag[1:])
+      +             if section in _CONTEXT and level > context_level:
+      +                 continue
+      +             section = _inline_content(node).strip().lower()
+      +             context_level = level
+  no-context-task-file-unchanged-behavior/parsed-model-gains-context-field
+    Line 77 declares `context: list[TextSpan] = Field(default_factory=list)` on ParsedTaskFile, which is always present and defaults to an empty list. A context-free file therefore serializes with an extra `context: []` key, which is the DEFECTIVE behaviour already in the code. The smallest repair would be to stop always emitting the field. Deleting line 77 does that, but it would also break any code that parses a Context section, so this is only a minimal repair sketch. The model would need to omit the field when it is empty, for example through a serializer, to preserve both behaviours. (the repair failed 73 of 114 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/requirement/task_file.py lines 77-77:
+      -     context: list[TextSpan] = Field(default_factory=list)
+  parse-records-context-field/context-heading-match-exact
+    Line 31 defines _CONTEXT = {"context"} and line 92 tests `section in _CONTEXT`, where section is the lowercased heading text from line 91. That is an exact match, so `Context:` or `Background` is not recognised. Heading level is never checked, so `# Context` matches too. The code already does the DEFECTIVE behaviour. The repair adds the common variants `context:` and `background` to the set, so these headings are recognised and their content goes into `context`.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/requirement/test_region_coverage.py::test_nested_content_under_an_unrecognised_heading_is_reported_as_unread
+      tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+      tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+      tests/requirement/test_task_context.py::test_the_same_text_under_an_unrecognised_heading_still_bounds_coverage
+      tests/requirement/test_task_file.py::test_text_outside_every_recognised_section_is_reported_not_dropped
+    repair at src/acceptance/requirement/task_file.py lines 31-31:
+      - _CONTEXT = {"context"}
+      + _CONTEXT = {"context", "context:", "background"}
+  parse-records-context-field/subheading-ends-context-section
+    Line 91 sets `section` on every heading node regardless of level, so a `### Measurements` subheading inside `## Context` replaces `section` and later blocks in Context no longer reach the `section in _CONTEXT` branch. The repair keeps `section` when already in Context and the heading is deeper than h2. It assumes Context sits at h1 or h2, because the code does not track the Context heading's own level.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/requirement/task_file.py lines 89-91:
+      -         if node.type == "heading":
+      -             # Headings are structure, not requirements, and are never unclaimed.
+      -             section = _inline_content(node).strip().lower()
+      +         if node.type == "heading":
+      +             # Headings are structure, not requirements, and are never unclaimed.
+      +             if section in _CONTEXT and node.tag not in ("h1", "h2"):
+      +                 continue
+      +             section = _inline_content(node).strip().lower()
+
+Evidence limitations:
+  1. No material gaps found at the achievable evidence tier — not proof of correctness. The full application was not independently executed (§3.7).
+
+Recommended next instruction: (none)run dd5825e534a944a8
+  continuing 9467b78f2b6336b7
+  continue this run with: --continue dd5825e534a944a8
+Model usage by stage:
+  stage                                model                                                                      calls   prompt  output  reasoning  cached  this run  recorded  time this run
+  -----------------------------------  ---------------------------------------------------  ---------------------------  -------  ------  ---------  ------  --------  --------  -------------
+  obligation linking                   voyage/voyage-3.5-lite                                   1 (0 live / 1 replayed)      811       0          —       —   $0.0000   $0.0000              —
+  defect enumeration                   anthropic/claude-sonnet-5-5                              9 (9 live / 0 replayed)   56,473  14,876      6,631    0.0%   $0.2884   $0.2884         144.0s
+  defect-to-test pair mapping          voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5    25 (25 live / 0 replayed)  132,373   6,124      5,917    0.0%   $0.2752   $0.2752          90.6s
+  coverage classification              anthropic/claude-sonnet-5-5                              1 (1 live / 0 replayed)   11,990   1,756          0    0.0%   $0.0475   $0.0475          11.7s
+  unrequested-change detection         anthropic/claude-sonnet-5-5                              1 (1 live / 0 replayed)   10,857     121          0    0.0%   $0.0284   $0.0284           2.8s
+  defect-to-test pair judgement (Jev)  jev-latest                                           214 (214 live / 0 replayed)  754,889   4,280          —       —   $0.0317   $0.0317          58.1s
+  mutation descriptor                  anthropic/claude-sonnet-5-5                            29 (29 live / 0 replayed)  174,288  18,071     10,991    0.0%   $0.5293   $0.5293         197.5s
+  this run spent $1.2005 on 279 live call(s); the evidence cost $1.2005 to record (1 call(s) replayed at no cost to this run)
+

@@ -7908,3 +7908,20 @@ the record.
   >
   > At #414's Gate 2 the in-flight limit for batched runs was rated `risky` and unrequested in three consecutive runs under three designs. Batching is requested and cannot meet its purpose without the limit. The detector should be able to say "in service of obligation X" for a change the obligation cannot be met without, rather than rating it as scope expansion.
 - **Status:** open
+
+### [2026-10-25] "Defects the code already has" asserts opposite defects across runs when the mandate leaves a behaviour open
+- **Kind:** filing
+- **Found during:** #212, Gate 2 runs 2 and 3
+- **Where:** the static-tier "Defects the delivered code already has" section of `check` (defect judgement, `src/acceptance/evidence/`)
+- **Severity:** should-fix
+- **What's wrong:** #212's mandate says nothing about a `### Constraints` sub-heading inside `## Context`. Run 2 (`dogfood-logs/212-gate2-run2/`, head 060fef5) asserted as a defect the code already had that such a heading was swallowed into Context. After the code changed to end Context there, run 3 (`dogfood-logs/212-gate2-run3/`, head e9568dd) asserted the opposite as a defect, proposing run 2's code as the repair. Run 3's unrequested-change detection also flagged the same logic as unrequested. Each run invents an expected behaviour the mandate does not state, so the gate can never settle on it.
+- **Why I didn't act:** a change to defect judgement, outside #212.
+- **Drafted fix:** filing, child of #183 (evidence judgement umbrella):
+  > **Title:** A behaviour the mandate leaves open is reported as a defect in whichever direction the code took
+  >
+  > When no requirement settles a behaviour, the static "defects the delivered code already has" section still asserts one reading as expected and the code as defective — and the reading flips between runs. At #212's Gate 2, run 2 called "a `### Constraints` under Context is swallowed into Context" a defect; after the code changed, run 3 called "it ends Context" a defect and offered run 2's code as the repair (`dogfood-logs/212-gate2-run{2,3}/output.log`). A behaviour no requirement settles is an open question, not a defect.
+  >
+  > **Acceptance**
+  > - A claimed defect whose expected behaviour is stated by no requirement is reported as an open question naming the behaviour, not as a defect the code already has.
+  > - Two runs over the same mandate never assert opposite expected behaviours for the same code region as defects.
+- **Status:** filed as #430, 2026-10-25
