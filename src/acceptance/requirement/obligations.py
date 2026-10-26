@@ -79,7 +79,7 @@ from acceptance.review_state import (
     RequirementRef,
     RequirementSection,
 )
-from acceptance.source_ref import find_span
+from acceptance.source_ref import TextSpan, find_span
 from acceptance.supplied_ids import (
     UnusableAnswer,
     UnusableAnswerLog,
@@ -545,6 +545,10 @@ def _user_prompt(
     `task-*` requirement in their ANSWERING set derived an obligation for a
     requirement they had only been shown
     (`docs/experiments/317-over-answering/findings.md` §2).
+
+    The task file's `## Context` section is not here: it travels in a block of
+    its own (`_context_text`), so it cannot be read as one more listed
+    requirement.
     """
     lines = [
         "The complete set of requirements in this task file, for context:",
@@ -570,6 +574,41 @@ def _user_prompt(
         ]
     )
     lines.extend(_revision_block(revisions or {}, {answer_for}))
+    return "\n".join(lines)
+
+
+def _context_text(context: list[TextSpan]) -> str:
+    """The task file's background, labelled as background, or nothing at all (#212).
+
+    Sent as its own `TASK_CONTEXT` block, which `assemble` places in a different
+    message from the requirement list. Its separation is therefore the request's
+    structure, not only the label at its head.
+
+    **Empty when the file has no Context section**, and `assemble` drops an
+    empty block, so such a file produces a request byte-identical to the one
+    this stage produced before the section existed, and every recorded
+    transcript still replays — the same rule `_revision_block` follows.
+
+    Shown rather than withheld: the decomposer needs the background to read the
+    mandate well, and withholding it would trade background-as-obligation for a
+    decomposition made without knowing what the change is for.
+    """
+    if not context:
+        return ""
+    lines = [
+        "TASK CONTEXT",
+        "",
+        (
+            "The task file gives this background to explain the mandate. It is not "
+            "a requirement: it has no id, it needs no disposition, and no obligation "
+            "is derived from it. Use it only to understand the requirements below. "
+            "Where it describes how the system behaves today, that is the starting "
+            "point the change is made from, not a property the change must keep."
+        ),
+    ]
+    for block in context:
+        lines.append("")
+        lines.append(block.text)
     return "\n".join(lines)
 
 
@@ -830,6 +869,7 @@ def _ask_about(
     quotes: list[str],
     revisions: dict[str, RequirementDerivation],
     partition_descriptor: dict,
+    context: list[TextSpan],
 ) -> tuple[_Decomposition, list[UnusableAnswer]]:
     """One call, about `requirement` alone, quoting only `quotes`.
 
@@ -847,6 +887,7 @@ def _ask_about(
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            Block(BlockKind.TASK_CONTEXT, _context_text(context)),
             Block(BlockKind.SUBJECT, _user_prompt(shown, requirement.id, revisions)),
         ]
     )
@@ -1117,6 +1158,7 @@ def decompose(
             quotable_spans(batch.items[0].text),
             plan.revised,
             batch.request_partition(),
+            parsed.context,
         ),
         max_in_flight=client.calls_in_flight,
     )
@@ -1176,6 +1218,7 @@ def decompose(
                 [offerable(decision.text)],
                 {},
                 {"size": ONE_REQUIREMENT_PER_CALL},
+                parsed.context,
             )
 
         span_answers = map_calls(uncovered, _ask_span, max_in_flight=client.calls_in_flight)

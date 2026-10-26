@@ -126,6 +126,16 @@ class BlockKind(Enum):
     #: than one call's subject.
     REGIONS = 35
 
+    #: A task file's `## Context` section, as decomposition shows it (#212):
+    #: background that explains the mandate and is not part of it. Shared by
+    #: every decompose call of a run, and by no other stage's, so it sits after
+    #: that stage's `INSTRUCTIONS` — and above `SUBJECT`, which is what puts it
+    #: in a different message from the requirement list it must be kept apart
+    #: from. A file without the section passes an empty block, which `assemble`
+    #: drops, so its requests are unchanged. No stage sends both this and
+    #: `REGIONS`, so their relative order is immaterial.
+    TASK_CONTEXT = 36
+
     #: What this one call is about: its batch, its criteria, the single change
     #: being judged. Shared with nothing, so it goes last.
     SUBJECT = 40

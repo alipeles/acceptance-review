@@ -368,7 +368,11 @@ and task files are already committed under `tests/fixtures/rating-stability/`.
 **Task-file style: ticket grade.** Write `current-task.md` the way a good issue
 is written, not the way a contract is written: a narrative Task section saying
 what must be true when the work is done, Constraints only where they add content
-the narrative does not carry, and Scope exclusions. Say each requirement once —
+the narrative does not carry, and Scope exclusions. Background — the problem
+being fixed, how the code behaves today, a measurement already taken — goes in
+an optional `## Context` section, never under `# Task`: under Task it is read as
+mandate, and a sentence describing today's behaviour becomes an obligation to
+keep it (#212). Context gets no requirement id and yields no obligation. Say each requirement once —
 a constraint restated in a completion list is a duplicate obligation we authored
 ourselves. Do not pre-enumerate the obligation set: a Completion expectations
 section that re-lists every behavior does Gate 1's decomposition at authoring
