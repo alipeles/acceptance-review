@@ -131,6 +131,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--audit", choices=["v6", "v10"], required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--mode", choices=["record", "replay"], default="replay")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=0,
+        help="a repeat run: records into its own transcript directory so every answer is fresh",
+    )
     args = parser.parse_args(argv)
 
     defects = load_defects()
@@ -139,9 +145,11 @@ def main(argv: list[str] | None = None) -> int:
     for _, _, descriptor in labelled:
         source_at(descriptor.path, sources)
 
-    client = RunConfig(
-        model=args.model, mode=Mode.RECORD if args.mode == "record" else Mode.REPLAY
-    ).build_client()
+    config = RunConfig(model=args.model, mode=Mode.RECORD if args.mode == "record" else Mode.REPLAY)
+    if args.repeat:
+        root = Path(f".acceptance/cache/416-repeat-{args.repeat}/transcripts")
+        config = config.model_copy(update={"transcript_root": root})
+    client = config.build_client()
     verdicts = verify_edits(
         [(defects[d], descriptor, sources[descriptor.path]) for d, _, descriptor in labelled],
         client,
@@ -170,13 +178,15 @@ def main(argv: list[str] | None = None) -> int:
             for (d, is_good, _), v in zip(labelled, verdicts, strict=True)
         ],
     }
-    name = f"{args.audit}-{args.model.replace('/', '_')}.json"
+    repeat = f"-repeat{args.repeat}" if args.repeat else ""
+    name = f"{args.audit}-{args.model.replace('/', '_')}{repeat}.json"
     (HERE / "results").mkdir(exist_ok=True)
     (HERE / "results" / name).write_text(json.dumps(result, indent=2) + "\n")
     print(
         f"{args.audit} {args.model}: bad edits refused {caught} of {len(bad)} "
         f"({caught / len(bad):.0%}); good edits refused {false_alarms} of {len(good)} "
-        f"({false_alarms / len(good):.0%})"
+        f"({false_alarms / len(good):.0%})",
+        file=sys.stderr,
     )
     print(render(summarize(client.observed_calls)), file=sys.stderr)
     return 0

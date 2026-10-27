@@ -1,0 +1,426 @@
+{
+  "audit": "v10",
+  "model": "anthropic/claude-opus-5-5",
+  "bad_edits": 21,
+  "bad_refused": 16,
+  "good_edits": 31,
+  "good_refused": 3,
+  "cases": [
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/no-discriminate-report-not-wired",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 131 renders `_mutation_block(review)` whenever `review.mutation_attempts` exists, so the mutation outcome, including the all-survived conclusion, reaches the report. This assumes `_mutation_block` emits that conclusion; its body is not shown. After, line 131 also requires `review.set_aside_tests`, so a run with attempts but no set-aside tests skips the block, and the report can end without the non-discrimination conclusion."
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-classified-as-set-aside",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before: line 178 `if unobserved:` sends only partly-observed runs to NOT_ATTEMPTED, so a fully completed run with no red test falls through to SURVIVED at line 187. After: line 178 becomes `if not unobserved:`, so a fully completed run with no failures returns NOT_ATTEMPTED and never records the survival. Partly-observed runs now become SURVIVED instead."
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-not-propagated-to-review-state",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 643 passes `mutation_attempts=attempts` into the Review, so survived attempts reach stored state and the report. After, line 643 sets `mutation_attempts=[]`. The attempts are still computed upstream but are dropped from the Review, so callers never see the non-discrimination result."
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/baseline-set-aside-reason-defaults-to-generic-text",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 145 keeps the execution stage's reason (`outcome.reason or ...`) and only uses the generic text when that reason is missing. After, line 145 hardcodes the canned reason for every non-passing test and throws away outcome.reason."
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-missing-reason",
+      "edit": "bad",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 127 raises when `not self.settled and not has_reason`, so every unsettled attempt needs a reason. After, line 127 checks only `outcome is KILLED`. KILLED is a settling kind, so unsettled outcomes with an empty reason are now accepted (and killed ones wrongly require a reason)."
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-path-loses-reason",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 184 sets reason=_why_unobserved(unobserved, result.outcomes), so the not_attempted attempt carries the runner-produced reason. After, line 184 sets reason=\"\", which records the not_attempted outcome with an empty reason."
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/allow-failing-tests-not-propagated",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "cannot_tell",
+      "after_does": "other",
+      "reason": "Before, line 209 passes `execution=execution` into run_review, but the shown code never builds that object or shows it carrying the continue-anyway setting, so whether the flag reaches the baseline run can't be confirmed. After, line 209 passes `execution=None`, which drops the entire execution configuration rather than just the continue-anyway flag, likely disabling or defaulting the whole execution tier; that is broader than the named defect."
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/failing-tests-not-listed-in-report",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 313-315 loop over review.set_aside_tests and render each test_id with its kind and reason. After, line 313 replaces this with a generic count note ('N test(s) were set aside') that never names the excluded tests."
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "cannot_tell",
+      "after_does": "defective",
+      "reason": "Before, line 509 passes `verdicts` (executed_verdicts + pair_mapping.verdicts) to derive_support, but the shown code does not reveal whether set-aside tests were already filtered out upstream. After, line 509 explicitly appends `[v for v in pair_mapping.verdicts if v.test_id in set_aside_tests]` to the support input, so set-aside failing tests feed into the derived support and rating."
+    },
+    {
+      "defect_id": "does-not-run-first/execution-path-not-wired-into-review-flow",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 457 calls _run_execution_tier(...) before judge_pairs at line 461, so execution runs ahead of the static judgement. After, line 457 hardcodes `attempts, executed_verdicts, set_aside_tests = [], [], []`, so the execution-tier function is never called and judge_pairs becomes the effective first stage."
+    },
+    {
+      "defect_id": "does-not-run-first/static-judgement-still-runs-before-execution",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "other",
+      "reason": "BEFORE, line 457 calls `_run_execution_tier` before `judge_pairs` (461), and only `remaining_defect_sets(attempts, ...)` reaches the model, which is the expected order. AFTER, line 457 replaces that call with empty lists, so execution never runs and `judge_pairs` gets every defect set. That disables the execution tier rather than reordering the code-reading judgement ahead of it."
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/execution-disabled-skips-static-judgement",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "other",
+      "reason": "Before, line 457 runs the execution tier and line 465 passes `remaining_defect_sets(attempts, defect_sets)` to judge_pairs, so unsettled defects get the static judgement. After, line 465 passes the full `defect_sets`, so unsettled defects still get static judgement, but settled ones are judged statically as well and double-counted alongside executed_verdicts. That is a different change, not the defective gating-off of the execution tier."
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/not-attempted-defects-never-fed-to-static-judge",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 85 removes only defects whose attempt is `settled`. The edit's need to add NOT_ATTEMPTED separately implies `settled` excludes it, so unsettled defects stay in the static set; `settled`'s definition is not shown, so this is inferred. After, lines 85-89 add `attempt.outcome is MutationOutcomeKind.NOT_ATTEMPTED` to the removed set, so not_attempted defects are dropped from what the static judgement receives."
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "other",
+      "reason": "Before, line 85 removes only defects whose attempt is `settled`, so every unsettled defect stays in the DefectSets passed to the static judgement. After, line 85 removes only KILLED defects; unsettled defects are still kept, but settled-survived defects are now also sent to static judgement. That is a different change, not the omission described as defective."
+    },
+    {
+      "defect_id": "injected-text-recorded-next-to-result/mutation-attempts-without-descriptor-cannot-record-injected-text",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 151 rejects any settled attempt with descriptor None. After, line 151 adds `and self.outcome is MutationOutcomeKind.KILLED`, so a settled outcome that is not a kill (e.g. survived) can exist with no descriptor, which is the DEFECTIVE behaviour."
+    },
+    {
+      "defect_id": "injected-text-recorded-next-to-result/mutation-block-omits-injected-text-for-unsettled-attempts",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 288 `if descriptor is not None:` renders the injected text for every attempt that has a descriptor, settled or not. After, line 288 adds `and attempt.settled`, so unsettled attempts (not_mutable/not_attempted) skip the injected text and only print the reason at lines 301-302."
+    },
+    {
+      "defect_id": "mechanical-validity-checks/containment-check-only-uses-resolved-regions",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "expected",
+      "reason": "BEFORE, lines 104-111 return `_not_mutable` right away when `regions` is empty. AFTER, that guard is removed, but with empty regions `readable` (line 111) is empty, so line 112-115 still returns `_not_mutable` before `build_descriptor` or any execution. The defect is still rejected mechanically, only with a less accurate reason message, so the edit does not produce the DEFECTIVE behaviour."
+    },
+    {
+      "defect_id": "mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "defective",
+      "after_does": "defective",
+      "reason": "BEFORE: lines 278-285 run the test baseline and raise ReviewHalted before build_descriptors (line 290) and run_mutations (292) ever see a descriptor, so execution control flow already short-circuits validity. AFTER: line 284 only adds `and not execution.allow_failing_tests`, letting a halted baseline proceed. That is the defect's 'proceeding past them', and the baseline still gates descriptor validity before it is established."
+    },
+    {
+      "defect_id": "mechanical-validity-checks/parse-check-applies-only-to-some-file-types",
+      "edit": "bad",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 140 returns the parser for any suffix in _PARSERS, so every parseable file type is re-parsed. After, line 140 adds `suffix in {\".py\", \".pyi\", \".json\"}`, so only those three suffixes are ever parsed and other parseable types skip the check."
+    },
+    {
+      "defect_id": "no-edit-without-named-region/missing-region-not-reported-as-not-editable",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 105-111 return a message stating the defect names no changed region, so there is no span to replace. After, lines 105-109 reuse the generic 'no single contiguous edit was found' message, which is the missing-descriptor text and never says the defect lacks a named region."
+    },
+    {
+      "defect_id": "no-line-execution-recording/execution-tier-still-derives-line-coverage",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "cannot_tell",
+      "after_does": "other",
+      "reason": "Before, line 479 feeds `executed_verdicts` from `_run_execution_tier` into `derive_support`, but the code shown does not reveal whether these encode executed lines or only injected-defect (mutation) outcomes. After, line 479 drops `executed_verdicts` entirely while `judge_pairs` still receives only `remaining_defect_sets(attempts, ...)`, so defects settled by execution get no verdict at all. That disables the execution tier's contribution rather than removing line-coverage recording specifically."
+    },
+    {
+      "defect_id": "no-line-execution-recording/line-execution-recording-still-present",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 289-290 renders only the mutation injection site, not which lines any test executed, and killing tests are listed by id alone (line 295). After, line 295 appends `lines {span}` to each killing test id, so the report now shows a line span against every test, which is per-test line information of the kind the defect describes. It can also raise a NameError or show a stale span when descriptor is None."
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parse-failure-becomes-not-mutable",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 127-133 only run the parse check `if parse is not None`, so a file with no parser falls through to `return None` and passes. After, lines 128-129 return \"not mutable because it has no parser\", which turns parser absence into a rejection."
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parser-check-applies-to-all-files",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "cannot_tell",
+      "after_does": "cannot_tell",
+      "reason": "Both versions resolve parsers only through the `_PARSERS` table, which is not shown: before by looping with `path.endswith(suffix)` (lines 139-141), after with `_PARSERS.get(path[path.rfind('.'):])` (line 139). Without the table's contents, neither version can be judged on whether parseable file types fall outside it. The after version also stops matching multi-dot or dotless keys, which may or may not matter for this table."
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parserless-files-still-rejected",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before: line 128 `if parse is not None:` skips the parse check when there is no parser, so the function falls through to `return None` and treats the file as valid. After: lines 128-129 return an invalidity message ('no parser available') when parse is None, which rejects parser-less files purely for lacking a parser."
+    },
+    {
+      "defect_id": "no-whole-suite-run/baseline-control-run-uses-all-tests",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "other",
+      "reason": "Before, line 129 runs `requested`, the de-duplicated form of the `test_ids` passed in, which the docstring treats as the candidate tests. After, line 129 passes the raw `test_ids` instead, so the same tests run with duplicates no longer removed; nothing widens the run to the full discovered suite, so the change is not the defective behaviour."
+    },
+    {
+      "defect_id": "no-whole-suite-run/whole-suite-execution-flag",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "cannot_tell",
+      "after_does": "other",
+      "reason": "Before, line 138 passes `tests` to `run_tests`, but the shown code does not reveal whether that is the full discovered list or a named subset. After, line 138 passes the paths of the defect's source files from `_sources(regions, root).keys()` as test ids. Those are neither the candidate tests nor the whole suite, and they no longer match the `tests` list given to `_classify`, so the edit breaks the run rather than doing either behaviour."
+    },
+    {
+      "defect_id": "observation-not-prediction/execution-verdicts-not-marked-as-observed",
+      "edit": "good",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "other",
+      "reason": "Before, line 227 has a `tier` field defaulting to STATIC, with DEFECT_KILLED marking mutation-runner observations, so executed verdicts carry a distinguishing evidence tier. After, the field is still there, so executed verdicts are still marked DEFECT_KILLED; but the default flips to DEFECT_KILLED, which mislabels predicted verdicts that rely on the default as observed. That is a different fault from dropping the marker."
+    },
+    {
+      "defect_id": "observation-not-prediction/prediction-language-still-used-in-recorded-conclusion",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 109-112 use past-tense observed language (\"The test failed when the defect was injected\"). After, the same lines use conditional forecasts (\"would fail if the defect were injected\"), which is the predictive phrasing named in the defect."
+    },
+    {
+      "defect_id": "parser-files-still-parse/parse-check-only-covers-python",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, `_PARSERS` (lines 52-56) maps `.json` to `json.loads` alongside `.py`/`.pyi`, so malformed JSON gets parsed and rejected. After, the `.json` entry is removed (lines 52-55), leaving only `.py`/`.pyi` parsed, so a broken `.json` falls through to the non-parse checks and can pass."
+    },
+    {
+      "defect_id": "parser-files-still-parse/parse-errors-treated-as-acceptance",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 133 returns a rejection message when parse raises _PARSE_ERRORS. After, line 133 swallows the error with `pass`, so execution falls through to `return None` (valid) and the unparseable edit is accepted."
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/execution-off-path-skips-static-judgement",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, judge_pairs receives remaining_defect_sets(attempts, defect_sets) (line 465), so static code-reading judgement runs on every defect execution did not settle, including all of them when execution is disabled. After, line 462 passes [], so judge_pairs is called but judges nothing. Only executed_verdicts contribute to the review, and the static judgement never actually participates."
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "defective",
+      "after_does": "expected",
+      "reason": "Before, line 465 passes `remaining_defect_sets(attempts, defect_sets)` to judge_pairs, so defects that execution settled skip the code-reading judgement. After, line 465 passes the full `defect_sets`, so every defect still goes through judge_pairs and its verdicts are merged at line 479."
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "cannot_tell",
+      "after_does": "other",
+      "reason": "Before, line 284-285 raises ReviewHalted when baseline.halted. The docstring ties that halt to an already-failing candidate test the caller did not allow, not to an unrunnable project, and establish_baseline is not shown, so whether unrunnable cases halt cannot be decided. After, line 285 silently returns empty results instead. That removes the documented failing-test halt, leaving the docstring stale, which is a different behaviour from the unrunnable-fallback one named here."
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/unrunnable-defects-return-not-attempted-instead-of-static",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 178-185 return NOT_ATTEMPTED for unobserved runs, which the docstring says is handed to the static judge, so the static conclusion is preserved. After, lines 178-184 record SURVIVED for unobserved runs. That is a mutation outcome claiming the tests are weak, and it replaces the static judgement instead of deferring to it."
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/report-omits-set-aside-tests",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 314 appends `[{test.kind.value}] {test.test_id}`, so each set-aside test is named. After, line 314 appends only `[{test.kind.value}]`, so the section still lists entries with their kind and reason (line 315) but drops the test ids."
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/set-aside-tests-never-populated",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "BEFORE, line 644 passes `set_aside_tests=set_aside_tests`, so the failing control-run tests are stored on the Review and reach the report. AFTER, line 644 hardcodes `set_aside_tests=[]`, so the computed failing tests are dropped from review state and the report has nothing to list."
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "defective",
+      "after_does": "expected",
+      "reason": "Before, line 284-285 raises `ReviewHalted` whenever `baseline.halted`, stopping before `run_mutations`. After, line 284 raises only if `baseline.halted and execution.allow_failing_tests`. A halted baseline from failing tests, which arises when failing tests are not allowed, now falls through to `run_mutations` (lines 292-300), so the candidate tests do run against the altered copy."
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "defective",
+      "after_does": "expected",
+      "reason": "BEFORE, lines 71-79 return `_not_attempted` for every defect when `baseline.usable_tests` is empty, which is the defective short-circuit. AFTER removes that branch, so `run_mutations` always calls `_attempt` with `baseline.usable_tests`. Whether `_attempt` then executes the tests is not fully shown, but the short-circuit named in the defect is gone."
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted",
+      "edit": "bad",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, the unobserved branch (lines 178-185) returns NOT_ATTEMPTED but still passes `tests_run=tests`, so the candidate tests are recorded as having been executed against the altered copy. After, that branch (lines 178-184) drops `tests_run`, so a partially executed run is recorded as NOT_ATTEMPTED with no record of the tests having run."
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-allows-multi-file-edit",
+      "edit": "good",
+      "verified": false,
+      "before_does": "expected",
+      "after_does": "other",
+      "reason": "Before, the descriptor is a single path plus start_line..end_line applied with `apply_span`, and line 113 filters regions to `descriptor.path`, so the edit is one contiguous span in one file. After, line 113 becomes `named = list(regions)`, which drops the path filter: a span can now pass containment against a region named in a different file. That is a containment bug, but the recorded edit is still one contiguous span in one file, so it is not the multi-region or multi-file DEFECTIVE behaviour."
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-response-shape-can-lose-span-bounds",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "BEFORE, lines 208-214 build the MutationDescriptor from one path, result.start_line, result.end_line and the replacement, so the span is exact. AFTER, line 211 sets end_line=result.start_line, which drops the answer's real end boundary and collapses every span to one line. The recorded bounds no longer describe the actual replacement, which is the DEFECTIVE behaviour."
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/missing-region-rejected-as-mutable",
+      "edit": "bad",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 105-111 return _not_mutable when regions_for finds no region, stating there is no span to replace. After, lines 105-108 replace that rejection with a fabricated Region(path=\"\", start_line=1, end_line=1), so the defect proceeds into source reading and descriptor building instead of being declined. A later step may still reject it, but only by accident and with an unrelated reason."
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/region-containment-check-too-permissive",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 36 uses `and`, so a span is accepted only when both its start and its end lie inside the region. After, line 36 uses `or`, so a span that starts inside but ends past the region (or the reverse) is accepted, letting edits fall outside the named region."
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/span-validation-not-applied-before-injection",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, lines 133-134 return _not_mutable when invalidity_reason reports a problem, so an invalid descriptor never reaches mutated_copy. After, line 134 is `pass`: the check is still computed but no longer gates anything, so mutated_copy at line 137 applies invalid edits too."
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/descriptor-can-return-non-minimal-edit",
+      "edit": "good",
+      "verified": false,
+      "before_does": "defective",
+      "after_does": "defective",
+      "reason": "Before: `invalidity_reason` checks only that the span exists, a fixed line bound (line 104), containment and parsing, so any valid span within the bound is accepted with no minimality check. After: line 104 loosens the bound to `max_edit_lines + 1`, so it still has no minimality check and now admits even larger edits, which is the same non-minimal acceptance."
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/baseline-failure-halts-before-discrimination",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 284 `if baseline.halted: raise ReviewHalted(baseline)` stops the review before mutation whenever the baseline halts. After, line 284 adds `and execution.allow_failing_tests`. The baseline presumably halts only when failing tests are not allowed, so the condition is effectively never true. A halted baseline then falls through to run_mutations, which is the defective behaviour."
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/killed-tests-not-marked-as-killing",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 62 sets `kills=test_id in killing` (and the reason matches), so a failing test listed in killing_tests yields a killing verdict. After, lines 62-63 hardcode `kills=False`, so a killing test is recorded with tier DEFECT_KILLED but not as a kill, which is the wrong kills shape the defect describes."
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/mutation-kill-not-recorded-as-discriminating",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 479 merges `executed_verdicts` into `verdicts`, so the verdicts from the mutant runs are recorded in the ledger and in `derive_support`. After, line 479 is `verdicts = pair_mapping.verdicts`, which drops `executed_verdicts`. Those defects are also excluded from model judging by `remaining_defect_sets(attempts, ...)`, so a failing test on a mutant survives only as an attempt and never becomes a recorded discriminating verdict."
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/mutation-verdicts-dropped-from-review",
+      "edit": "good",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 641 stores `pair_verdicts=verdicts`, which the comment at 637-640 describes as the combined judged and executed list. After, it stores `pair_mapping.verdicts`, the static pair-judgement verdicts only, so the executed discriminating verdicts are dropped from the review."
+    },
+    {
+      "defect_id": "weaker-tier-evidence/executed-verdicts-upgrade-support-tier",
+      "edit": "bad",
+      "verified": true,
+      "before_does": "expected",
+      "after_does": "defective",
+      "reason": "Before, line 479 (`executed_verdicts + pair_mapping.verdicts`) concatenates verdicts unchanged, so each keeps its own `tier` going into the ledger and `derive_support`. After, line 479 rewrites every pair verdict with `model_copy(update={\"tier\": EvidenceTier.DEFECT_KILLED})`, and lines 491 and 509 then store that upgraded tier and feed it to `derive_support`, lifting the judgement above the weaker tier."
+    },
+    {
+      "defect_id": "weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier",
+      "edit": "bad",
+      "verified": false,
+      "before_does": "defective",
+      "after_does": "expected",
+      "reason": "Before, line 64 stamps every executed verdict with `tier=EvidenceTier.DEFECT_KILLED`, the stronger tier. After, line 64 sets `tier=EvidenceTier.STATIC`, so these verdicts stay at the weaker tier; this edit does not show whether other sources of DEFECT_KILLED exist."
+    }
+  ]
+}
