@@ -33,17 +33,17 @@ M52 = HERE.parents[1] / "jev" / "m52"
 sys.path.insert(0, str(M52))
 sys.path.insert(0, str(HERE))
 
-import pair_mapping_fc9defc as old  # noqa: E402
-import prompts  # noqa: E402
-from metrics import summary  # noqa: E402
-from split import cases, load_split  # noqa: E402
+import pair_mapping_fc9defc as old
+import prompts
+from metrics import summary
+from split import cases, load_split
 
-from acceptance.config import RunConfig  # noqa: E402
-from acceptance.defects.reachability import Pair  # noqa: E402
-from acceptance.evidence.discovery import DiscoveredTest  # noqa: E402
-from acceptance.llm import Mode  # noqa: E402
-from acceptance.review_state import Defect, DefectType  # noqa: E402
-from acceptance.usage import render, summarize  # noqa: E402
+from acceptance.config import RunConfig
+from acceptance.defects.reachability import Pair
+from acceptance.evidence.discovery import DiscoveredTest
+from acceptance.llm import Mode
+from acceptance.review_state import Defect, DefectType
+from acceptance.usage import render, summarize
 
 STORE = Path(".acceptance/cache/416-mutants/transcripts")
 

@@ -45,10 +45,10 @@ M52 = HERE.parents[1] / "jev" / "m52"
 sys.path.insert(0, str(M52))
 sys.path.insert(0, str(HERE))
 
-import prompts  # noqa: E402
-from keys import key  # noqa: E402
-from metrics import summary  # noqa: E402
-from split import cases, load_split  # noqa: E402
+import prompts
+from keys import key
+from metrics import summary
+from split import cases, load_split
 
 ROOT = HERE.parents[3]
 CACHE = ROOT / ".acceptance" / "cache" / "416-mutants" / "one-call"
