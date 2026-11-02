@@ -1,13 +1,16 @@
 """Merge the extracted sample and the judgements into one labeling page."""
-import json, sys, html
+
+import json
+import sys
 from pathlib import Path
 
 here = Path(__file__).parent
-extract = json.load(open(here / sys.argv[1]))
-judge = json.load(open(here / sys.argv[2]))
+extract = json.loads((here / sys.argv[1]).read_text())
+judge = json.loads((here / sys.argv[2]).read_text())
 out = here / sys.argv[3]
 
 MAX_HUNK = 90
+
 
 def trim(content):
     if not content:
@@ -17,6 +20,7 @@ def trim(content):
         return content
     return "\n".join(lines[:MAX_HUNK]) + f"\n… ({len(lines) - MAX_HUNK} more lines)"
 
+
 items = []
 for it in extract["items"]:
     j = judge["items"].get(it["id"], {})
@@ -24,34 +28,66 @@ for it in extract["items"]:
     for d in it.get("defects", []):
         jd = (j.get("defects") or {}).get(d["id"], {})
         mut = d["mutation"][0] if d.get("mutation") else None
-        defects.append({
-            "id": d["id"].split("/", 1)[1], "type": d["type"], "description": d["description"],
-            "mutant": (mut or {}).get("outcome"),
-            "mutant_reason": ((mut or {}).get("reason") or "")[:260],
-            "killed_by": [t.split("::")[-1] for t in (mut or {}).get("killing_tests", [])][:3],
-            "call": jd.get("call"), "note": jd.get("note"),
-        })
-    items.append({
-        "id": it["id"], "kind": it["kind"], "ordinal": it["ordinal"],
-        "description": it["description"], "observable": it.get("observable_behavior"),
-        "type": it.get("type"), "importance": it.get("importance"), "explicit": it.get("explicit"),
-        "severity": it.get("severity"),
-        "spans": it.get("source_spans") or [],
-        "coverage_status": it.get("coverage_status"), "evidence_class": it.get("evidence_class"),
-        "covered": it.get("covered_defects"), "enumerated": it.get("enumerated_defects"),
-        "code": [{"path": c["path"], "header": c["header"], "content": trim(c["content"])} for c in it["code"]],
-        "tests": [{"id": t["id"], "source": t["source"]} for t in it.get("tests", [])],
-        "defects": defects,
-        "recommendations": [{"defect": r["plausible_defect"], "inputs": r["required_inputs"],
-                             "assertions": r.get("required_assertions", [])} for r in it.get("recommendations", [])],
-        "judgement": {k: j.get(k) for k in ("plain", "label", "causes", "explanation", "agent")},
-    })
+        defects.append(
+            {
+                "id": d["id"].split("/", 1)[1],
+                "type": d["type"],
+                "description": d["description"],
+                "mutant": (mut or {}).get("outcome"),
+                "mutant_reason": ((mut or {}).get("reason") or "")[:260],
+                "killed_by": [t.split("::")[-1] for t in (mut or {}).get("killing_tests", [])][:3],
+                "call": jd.get("call"),
+                "note": jd.get("note"),
+            }
+        )
+    items.append(
+        {
+            "id": it["id"],
+            "kind": it["kind"],
+            "ordinal": it["ordinal"],
+            "description": it["description"],
+            "observable": it.get("observable_behavior"),
+            "type": it.get("type"),
+            "importance": it.get("importance"),
+            "explicit": it.get("explicit"),
+            "severity": it.get("severity"),
+            "spans": it.get("source_spans") or [],
+            "coverage_status": it.get("coverage_status"),
+            "evidence_class": it.get("evidence_class"),
+            "covered": it.get("covered_defects"),
+            "enumerated": it.get("enumerated_defects"),
+            "code": [
+                {"path": c["path"], "header": c["header"], "content": trim(c["content"])}
+                for c in it["code"]
+            ],
+            "tests": [{"id": t["id"], "source": t["source"]} for t in it.get("tests", [])],
+            "defects": defects,
+            "recommendations": [
+                {
+                    "defect": r["plausible_defect"],
+                    "inputs": r["required_inputs"],
+                    "assertions": r.get("required_assertions", []),
+                }
+                for r in it.get("recommendations", [])
+            ],
+            "judgement": {
+                k: j.get(k) for k in ("plain", "label", "causes", "explanation", "agent")
+            },
+        }
+    )
 
 data = {
-    "meta": {"repo": extract["repo"], "revision": extract["reviewed_revision"][:7], "verdict": extract["verdict"],
-             "rationale": extract["rationale"], "obligation_count": extract["obligation_count"]},
+    "meta": {
+        "repo": extract["repo"],
+        "revision": extract["reviewed_revision"][:7],
+        "verdict": extract["verdict"],
+        "rationale": extract["rationale"],
+        "obligation_count": extract["obligation_count"],
+    },
     "task_text": extract["task_text"],
-    "labels": judge["labels"], "causes": judge["causes"], "context": judge["context"],
+    "labels": judge["labels"],
+    "causes": judge["causes"],
+    "context": judge["context"],
     "items": items,
 }
 
