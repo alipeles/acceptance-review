@@ -214,11 +214,13 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
     from acceptance.coverage.unrequested import _STAGE as UNREQUESTED
     from acceptance.defects.enumeration import _STAGE as ENUMERATION
     from acceptance.defects.pair_mapping import _STAGE as PAIRS
+    from acceptance.requirement.claims import UNIT_STAGE
     from acceptance.requirement.linking import _STAGE as LINKING
     from acceptance.requirement.obligations import _STAGE as DECOMPOSE
     from acceptance.requirement.summary import SUMMARY_STAGE
 
     declared = {
+        UNIT_STAGE,
         DECOMPOSE,
         SUMMARY_STAGE,
         LINKING,

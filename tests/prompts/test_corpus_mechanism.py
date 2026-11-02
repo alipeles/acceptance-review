@@ -546,6 +546,18 @@ _APPROVED_TRANSCRIPTS = {
         "invoice",
         "CSV",
     ),
+    # _UnitDecisions, anthropic/claude-sonnet-5-5 — 2 recording(s) (#436).
+    # `tests/fixtures/claims/today-then-change.md`.
+    "87e83e38f72c4f90d0f9be308f6f45767045ee2de612a9e9c1813297f3a50bf4.json": (
+        "invoice export",
+        "UTC",
+    ),
+    # `tests/fixtures/claims/432-issue-as-filed.md`: #432's issue body as filed,
+    # recorded because #436's Acceptance names it.
+    "711cb995801c6b6ae436b5a7c5670161ca12c052e447c6f610a00fdb636c10dd.json": (
+        "LiteLLM",
+        "native Anthropic adapter",
+    ),
 }
 
 
@@ -617,6 +629,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
     }
 
     assert users == {
+        "prompts/test_claims_prompt.py",
         "prompts/test_corpus_mechanism.py",
         "prompts/test_coverage_prompt.py",
         "prompts/test_decomposition_prompt.py",

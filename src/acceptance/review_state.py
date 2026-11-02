@@ -779,6 +779,97 @@ class RequirementMap(_Model):
         ]
 
 
+class UnitDecision(str, Enum):
+    """Whether one unit of the mandate feeds claim construction (#436).
+
+    `unsure` is kept as its own value rather than folded into `feeds`, although
+    the two have the same effect: a unit the model could not place is the place
+    to look first when a claim turns out to be noise, and folding it would erase
+    that. The asymmetry is the design's (`docs/decomposition-redesign.md` §5 step
+    1): a claim built from background costs a pruned obligation later, a
+    requirement dropped here costs everything.
+    """
+
+    FEEDS = "feeds"
+    BACKGROUND = "background"
+    UNSURE = "unsure"
+
+
+class MandateUnit(_Model):
+    """One unit of the mandate: a sentence, or a block with no sentence inside.
+
+    Built by the code from the parse, never by the model, in document order.
+    Every block the parser produces is split into units, including text it could
+    not place under a known heading and text under `## Context` — the heading is
+    recorded as a hint for the decision and is never the decision itself.
+
+    `line` is the 1-based line the unit starts on. `decision` and `reason` are
+    the model's answer about this unit; `decided` is False when the answer did
+    not decide it exactly once, in which case the unit feeds claims by default
+    and the run records an unusable answer saying so.
+    """
+
+    id: str
+    heading: str | None = None
+    line: int
+    span: TextSpan
+    decision: UnitDecision
+    reason: str = ""
+    decided: bool = True
+
+    @property
+    def feeds(self) -> bool:
+        return self.decision is not UnitDecision.BACKGROUND
+
+
+class Claim(_Model):
+    """One verbatim span of the mandate that later stages build obligations from.
+
+    A claim carries no semantic label and is never split: a sentence saying two
+    things is one claim, and synthesis (#437) is where it becomes two
+    obligations. `span.text` is exactly `source[span.start:span.end]`.
+
+    The id shares its number with the unit it came from (`unit-07` gives
+    `claim-07`), so a claim's id does not move when the decision about some
+    other unit changes.
+    """
+
+    id: str
+    unit_id: str
+    line: int
+    span: TextSpan
+
+    @property
+    def text(self) -> str:
+        return self.span.text
+
+
+class ClaimSet(_Model):
+    """Every unit of the mandate, the decision about each, and the claims (#436)."""
+
+    units: list[MandateUnit] = Field(default_factory=list)
+    claims: list[Claim] = Field(default_factory=list)
+
+    def claim(self, claim_id: str) -> Claim | None:
+        for claim in self.claims:
+            if claim.id == claim_id:
+                return claim
+        return None
+
+
+class Reference(_Model):
+    """A citation of one claim or one obligation, by id.
+
+    What an obligation uses to cite the claims that support it, and what an
+    expectation will use to cite the obligations or claims that prompted it
+    (`docs/decomposition-redesign.md` §2 and §10). An open question today is
+    anchored to lines; an expectation has no line, so it needs this instead.
+    """
+
+    kind: Literal["claim", "obligation"]
+    id: str
+
+
 class Obligation(_Model):
     """A discrete, typed obligation derived from the task (§7.3, §9.1; M1.2).
 
@@ -797,6 +888,21 @@ class Obligation(_Model):
     explicit: bool
     observable_behavior: str
     source_spans: list[TextSpan] = Field(default_factory=list)
+    # The claims that support this obligation (#436). Empty until synthesis
+    # (#437) produces obligations from claims; today's obligations are derived
+    # per requirement and cite their text through `source_spans` instead.
+    claims: list[Reference] = Field(default_factory=list)
+
+    @field_validator("claims")
+    @classmethod
+    def _cites_only_claims(cls, value: list[Reference]) -> list[Reference]:
+        """`claims` names claims. An obligation citing another obligation here
+        would be support resting on a derived item rather than on the mandate."""
+        for reference in value:
+            if reference.kind != "claim":
+                raise ValueError(f"an obligation's claims must cite claims, not {reference.kind!r}")
+        return value
+
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
     evidence_class: EvidenceClassification | None = None
@@ -1362,6 +1468,11 @@ class Review(_Model):
     # state, so every later stage and the rendered report read the same record
     # of which requirements produced nothing.
     requirement_map: RequirementMap | None = None
+    # The mandate's units, the decision about each, and the claims built from
+    # them (#436). Persisted so synthesis, the report and evaluation can read
+    # which text fed the obligation set and which text was set aside as
+    # background, with the model's reason for each.
+    claim_set: ClaimSet | None = None
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     # One entry per obligation the enumeration stage was asked about (#313).
     # Advisory: nothing here reaches `completion` or any obligation's rating,
