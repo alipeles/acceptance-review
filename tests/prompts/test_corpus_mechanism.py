@@ -552,11 +552,11 @@ _APPROVED_TRANSCRIPTS = {
         "invoice export",
         "UTC",
     ),
-    # `tests/fixtures/claims/432-issue-as-filed.md`: #432's issue body as filed,
-    # recorded because #436's Acceptance names it.
-    "711cb995801c6b6ae436b5a7c5670161ca12c052e447c6f610a00fdb636c10dd.json": (
-        "LiteLLM",
-        "native Anthropic adapter",
+    # `tests/fixtures/claims/unrecognised-headings.md`: #432's issue body's shape
+    # on unrelated subject matter, standing in for that body (owner, 2026-11-02).
+    "93c32d3061e6098cd9ea41275ac9809ee98091b0dc82844419238b3813343c64.json": (
+        "renderer",
+        "ledger",
     ),
 }
 
