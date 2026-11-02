@@ -8006,3 +8006,50 @@ the record.
 - **Why I didn't act:** #414's code and test, outside #415.
 - **Drafted fix:** have the test wait until all ten threads are waiting before the batch is released (a barrier, or the batcher's own count of waiting calls), rather than relying on the gather window. Child of #184 (determinism and reproducibility umbrella).
 - **Status:** open
+
+### [2026-11-02] Comment on #432: moving Claude off LiteLLM does not re-key any recording
+- **Kind:** filing (comment asserting a new finding)
+- **Found during:** #432, before coding
+- **Where:** `src/acceptance/llm.py::ModelClient.build_request` and `complete`
+- **Severity:** should-fix (the issue's Cost section and acceptance item 4 rest on it, and so did #432's place first in M11)
+- **What's wrong:** #432's Cost section says moving the Anthropic path off LiteLLM "changes every request's bytes, so the whole transcript corpus re-records at once". The request key is not computed from what is sent. `build_request` hashes a provider-free description (model name, messages, temperature, seed, inlined schema, partition, effort); the cache breakpoint, the provider's request format and the dropped controls are all applied after the key is taken. Verified in code before the change, and by the full suite after it: every recording made through LiteLLM still replays after the change, under the same key.
+- **Why I didn't act:** a comment asserting a finding needs the owner's review before it is posted.
+- **Drafted fix:** post on #432:
+  > The Cost section's premise was wrong, and so was the reason this issue went first in M11 (decomposition redesign, #435). The request key is computed from `ModelClient.build_request`, which knows nothing about providers: the cache breakpoint, the Messages API request shape and the dropped temperature and seed are applied after the key is taken. Moving Claude onto the native adapter therefore re-keys nothing, and every recording made through LiteLLM still replays. The full suite confirms it on the #432 branch.
+  >
+  > Acceptance item 4 ("the corpus is re-recorded once") is therefore not forced by the code change. Decided 2026-11-02: no full re-record. Instead a few prompt tests are re-recorded live through the native adapter, to confirm Claude's answers come back in shape and with sensible cost figures. Benchmark figures stay comparable across this change.
+- **Status:** open
+
+### [2026-11-02] The rating-regression tests cannot create their worktrees inside the sandbox
+- **Kind:** defect
+- **Found during:** #432, full test run
+- **Where:** `src/acceptance/benchmark/corpus.py::materialize_corpus_run` (`git worktree add`), used by `tests/benchmark/test_rating_regression.py`
+- **Severity:** should-fix (ten tests fail locally for a reason unrelated to the change under test, and a gate that is red for the environment trains people to ignore red)
+- **What's wrong:** every test in `test_rating_regression.py` that builds a corpus case fails with `git worktree add` exiting 128. Run by hand, git says `could not create directory of '…/AI_acceptance_tool/.git/worktrees/wt0': Operation not permitted`. Worktree registrations live in the main checkout's `.git`, which the sandbox protects. The same tests passed in a sandboxed run earlier in the same session, so the protection appears to tighten during a session; the sandbox's own description of protected paths grew from "83 more" to "104 more" entries in that time. Interrupted runs also leave stale registrations (`wt0`, `wt1`, `wt2` under `pytest-500`), which the sandbox will not let `git worktree prune` remove. With the sandbox off, all 35 tests in the file pass on the #432 branch.
+- **Why I didn't act:** outside #432, and the right fix depends on whether the sandbox or the test should give way.
+- **Drafted fix:** child of #186 (benchmark umbrella). Options, cheapest first: (a) note in `docs/agent-notes/environment.md` that `tests/benchmark/test_rating_regression.py` needs the sandbox off, with the symptom; (b) materialize each corpus revision with `git archive <sha> | tar -x` into `tmp_path` instead of a registered worktree, which needs no write to `.git` and leaves nothing to prune. (b) removes the problem; check first that no test relies on the materialized tree being a git checkout.
+- **Status:** open
+
+### [2026-11-02] Comment on #373: when nothing is read, the "NOT READ" warning is not printed either
+- **Kind:** filing (comment asserting a new finding)
+- **Found during:** #432, decompose runs for #440 (`dogfood-logs/432-decompose-run1/`, `run2/`)
+- **Where:** `src/acceptance/cli.py::render_decomposition` (`if not total: return _render_flat(result)` returns before `_unread_source`); `src/acceptance/requirement/task_file.py::_list_target` (#373's gap)
+- **Severity:** should-fix (the report says "Obligations: (none)", which reads as "nothing to check", when the whole mandate went unread)
+- **What's wrong:** #373 (a bullet list under the Task heading is not read as any requirement) was filed at #372's Gate 1, where the report at least printed `!! NOT READ AS ANY REQUIREMENT`. That warning is skipped whenever no requirement is found at all: `render_decomposition` returns the flat rendering before `_unread_source` runs. So the worst case — a mandate entirely unread — is the one case with no warning. Verified by reading the code; observed on #432's issue text, run 1 (no recognised headings) and run 2 (headings mapped, all content in bullets under Task). Separately, `tests/requirement/test_region_coverage.py` reported 10 regions of run 2's file inside neither a requirement nor an unclaimed span; not yet checked whether that is lost text or the test not counting `## Context`.
+- **Why I didn't act:** outside #432; #436 (claims built from every unit the parser produces) is meant to replace this path.
+- **Drafted fix:** comment on #373:
+  > A second instance, worse than the first. At #372 the report printed `!! NOT READ AS ANY REQUIREMENT`. When *no* requirement is found, it prints nothing of the kind: `cli.py::render_decomposition` returns `_render_flat(result)` before `_unread_source` runs, so a mandate that went entirely unread reports "Obligations: (none)" with no warning. Seen running `decompose` on #432's issue text as filed (`dogfood-logs/432-decompose-run1/`) and with its headings mapped to recognised ones (`run2/`, where all content sits in bullets under `## Task`).
+  >
+  > If #436 does not replace this path, the fix here has two parts: read lists under Task as behaviour, and print the unread warning on the no-requirement path too.
+- **Status:** open
+
+### [2026-11-02] #436 should state that blocks the parser cannot place still yield claims
+- **Kind:** filing (edit to an issue's Acceptance)
+- **Found during:** #432, decompose runs for #440 (`dogfood-logs/432-decompose-run1/`, `run2/`)
+- **Where:** #436 (claims and schema), Acceptance
+- **Severity:** should-fix (without it, #373's loss can carry into the redesign while #436 passes its own checks)
+- **What's wrong:** #436 builds claims "one per sentence or line as the parser already splits them". Today the parser routes text by heading and files anything it cannot place — bullets under Task (#373), text under an unknown heading — as unclaimed, with no requirement. The design (`docs/decomposition-redesign.md` §5 step 1) says every unit feeds claims unless the model marks it background, which would end the loss, but #436's acceptance does not test it.
+- **Why I didn't act:** it changes the plan; the owner approves backlog edits.
+- **Drafted fix:** add to #436's Acceptance:
+  > - A block the parser cannot place under a known heading — a bullet list under `## Task`, text under a heading it does not recognise — still yields claims unless the model marks it background. #432's issue body as filed (`dogfood-logs/432-decompose-run1/mandate.md`) yields at least one claim per Acceptance bullet.
+- **Status:** open
