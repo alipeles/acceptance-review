@@ -8053,3 +8053,55 @@ the record.
 - **Drafted fix:** add to #436's Acceptance:
   > - A block the parser cannot place under a known heading — a bullet list under `## Task`, text under a heading it does not recognise — still yields claims unless the model marks it background. #432's issue body as filed (`dogfood-logs/432-decompose-run1/mandate.md`) yields at least one claim per Acceptance bullet.
 - **Status:** added to #436's Acceptance 2026-11-02 (approved by the owner).
+
+### [2026-11-02] The redesign doc says two different things about how claims are made
+- **Kind:** decision
+- **Found during:** #436 (claims and schema)
+- **Where:** `docs/decomposition-redesign.md` §2 (Claim) and §5 step 2
+- **Severity:** should-fix (#437, synthesis, will read the doc for what a claim is)
+- **What's wrong:** §2 says a claim is built by the code, verbatim, with no label, and never split. §5 step 2 says a model extracts claims "one per atomic statement", each with a kind (`request`, `constraint`, `exclusion`), and that "implement X using subsystem Y" yields two claims. #436's issue follows §2. I built §2.
+- **Why I didn't act:** the design doc is the owner's; changing it changes the plan.
+- **Drafted fix:** rewrite §5 step 2 to match §2: "Claim construction. Each unit that feeds becomes one claim, word for word, with the unit's line. No model call. Meaning, including the split of one claim into a request and a constraint, is assigned at synthesis (step 3)." Also drop "claims with kinds" from §6. Recommended. Rejected alternative: build §5 step 2 instead, which puts a model call back into claim construction and loses the byte-identical claims #436 asks for.
+- **Status:** open
+
+### [2026-11-02] A semicolon does not split a unit, so "X does Y today; make it do Z" is one claim
+- **Kind:** decision
+- **Found during:** #436 (claims and schema)
+- **Where:** `src/acceptance/requirement/spans.py::sentence_spans` (`_SENTENCE_BREAK` breaks only after `.`, `?`, `!`)
+- **Severity:** nice-to-have
+- **What's wrong:** #436's Acceptance gives the example "X does Y today; make it do Z" and expects the first part to yield no claim and the second to yield one. Written with a semicolon that is one sentence, so one unit, so one decision: the model can keep or drop it whole, not half. The fixture (`tests/fixtures/claims/today-then-change.md`) is written as two sentences, and the recorded run drops the first and keeps the second.
+- **Why I didn't act:** splitting on semicolons is a rule change for every mandate, and "a sentence that says two things is one claim" argues against it.
+- **Drafted fix:** none recommended. Keep sentence breaks as they are; a semicolon-joined "today" clause becomes one claim, and pruning (#438) handles it. Alternative: also break after `;`, which would split many constraint sentences in two.
+- **Status:** decided 2026-11-02 by the owner: won't fix, sentence breaks stay as they are.
+
+### [2026-11-02] Recording a transcript test needs two undocumented steps
+- **Kind:** defect
+- **Found during:** #436 (claims and schema), recording `tests/prompts/test_claims_prompt.py`
+- **Where:** `tests/support.py` header comment ("ACCEPTANCE_RECORD=1 pytest tests/prompts -q"); `docs/agent-notes/environment.md`
+- **Severity:** should-fix (the documented command fails twice before it works)
+- **What's wrong:** (1) pytest does not read `.env`, so `ACCEPTANCE_RECORD=1 pytest …` fails with `MissingKeyError: ANTHROPIC_API_KEY is not set`; only the CLI calls `load_dotenv`. (2) Inside the sandbox, a live Anthropic call fails with `ConnectionError: Connection error.` after 5 attempts even with `api.anthropic.com` allowed; with the sandbox off it succeeds. I believe this is the same TLS restriction that makes `pip install` need the sandbox off, now that #432 (native Anthropic adapter) sends Claude calls through the `anthropic` SDK. I did not verify the cause.
+- **Why I didn't act:** outside #436.
+- **Drafted fix:** in `tests/conftest.py`, call `load_dotenv(REPO / ".env", override=False)` when `ACCEPTANCE_RECORD=1` (never otherwise, so replay still needs no key). Add a line to `docs/agent-notes/environment.md`: live model calls (recording, `decompose`, `check --mode record`) need the sandbox off, with the `ConnectionError` symptom.
+- **Status:** open
+
+### [2026-11-02] The rule against recording this repo's own text now has one exception
+- **Kind:** decision
+- **Found during:** #436 (claims and schema)
+- **Where:** `tests/support.py` (comment above `RECORDED_TRANSCRIPTS`: "never against this repo's own dogfood runs"); `tests/prompts/test_corpus_mechanism.py::_APPROVED_TRANSCRIPTS`
+- **Severity:** nice-to-have
+- **What's wrong:** #436's Acceptance asks for #432's issue body as a fixture, so its transcript is now in the corpus. The rule exists so that this repo's diffs and task text do not end up in committed fixtures; an issue body is text already public on GitHub, and no diff is involved. `test_the_committed_corpus_holds_only_archetype_content` still passes on it.
+- **Why I didn't act:** followed the issue, which is authoritative; the rule's wording is the owner's to change.
+- **Drafted fix:** reword the comment to "never against this repo's diffs or dogfood task files; an issue body named by an issue's Acceptance is allowed". Alternative: replace the #432 fixture with a synthetic mandate of the same shape and edit #436's Acceptance to match.
+- **Status:** open (needs your call; merged with the #432 fixture in place, with the owner's approval of the PR)
+
+### [2026-11-02] #437 should route the `decompose` command through synthesis too
+- **Kind:** filing (comment on #437)
+- **Found during:** #436 (claims and schema), `dogfood-logs/436-decompose-run1/`
+- **Where:** #437 (synthesis), Acceptance; `src/acceptance/cli.py` (`decompose` calls `requirement/obligations.py::decompose` directly, not `run_review`)
+- **Severity:** should-fix (the owner was promised `decompose` would show content again once synthesis lands)
+- **What's wrong:** `decompose` on #432's and #436's issue bodies finds nothing, because the old path reads only known headings. #436 builds claims inside `run_review` only. #437's Acceptance pins `check` and the benchmark to synthesis but does not name the `decompose` command, so it could pass while `decompose` still shows nothing.
+- **Why I didn't act:** it changes #437's Acceptance; the owner approves backlog edits.
+- **Drafted fix:** comment on #437:
+  > Add to Acceptance: the `decompose` command goes through claims and synthesis too, and on #432's issue body as filed (`tests/fixtures/claims/432-issue-as-filed.md`) it prints at least one obligation per Acceptance bullet. Today it prints none (`dogfood-logs/436-decompose-run1/`, `dogfood-logs/432-decompose-run1/`).
+- **Status:** open
+
