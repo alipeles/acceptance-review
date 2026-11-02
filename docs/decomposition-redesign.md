@@ -157,26 +157,28 @@ decides when they are not. A unit the model is unsure about feeds extraction,
 because extracting nothing from a background paragraph costs nothing and
 dropping a requirement costs everything. There is no finer classification at
 the section level: a single line can carry a request and a constraint, and
-the split happens at the claim.
+that is sorted out at the obligation, not here.
 
-**Step 2. Claim extraction.** From the units that feed extraction, extract
-claims, one per atomic statement, each anchored to its line. Each claim has a
-kind: `request` (something to build or change), `constraint` (a condition
-the work must satisfy), or `exclusion` (what must not change or is out of
-scope). "Implement X using subsystem Y" yields a request claim and a
-constraint claim. This is the existing per-line extraction, renamed; its
-stability properties are the reason it is kept.
+**Step 2. Claim construction.** From the units that feed extraction, construct
+claims deterministically: one per sentence or line as the parser splits them,
+each with an id and a line anchor, verbatim. No model call and no semantic
+label. A claim that says more than one thing stays one claim; it will support
+more than one obligation. This is the existing per-line layer, kept because
+it is what makes the obligation set traceable and stable across runs.
 
 **Step 3. Synthesis.** From the full set of claims, produce the obligation
-set. Each obligation lists the claim ids that support it. The model is asked
-to produce behaviors and requirements, not to rewrite claims: several claims
-about one behavior become one obligation, and one claim describing several
-behaviors becomes several. Synthesis includes what the claims plainly entail,
+set. Each obligation lists the claim ids that support it. This is the step
+where meaning is assigned: the model is asked to produce requirements, not to
+rewrite claims. Several claims about one behavior become one obligation, and
+one claim saying several things becomes several obligations ("implement X
+using subsystem Y" becomes a request obligation for X and a constraint
+obligation that X uses Y). Synthesis includes what the claims plainly entail,
 not only what they say: "a CRUD interface for X" entails delete, and delete
 becomes an obligation supported by that claim with no question asked. The
 test for "plainly entails" is that the model can defend the obligation from
 the claim alone; anything it cannot is left for step 5. Each obligation
-carries a type using the existing type field. Provenance is `stated`.
+carries a type using the existing type field (requested behavior, constraint,
+scope exclusion). Provenance is `stated`.
 
 **Step 4. Pruning.** Apply the standard in section 3 to every obligation.
 Each is kept or dropped with a one-line reason naming which rule applied.
@@ -206,7 +208,7 @@ the claims, the model is asked two things as an expert reviewer:
   an ambiguity attached to the obligation.
 
 Every expectation and ambiguity becomes an open question with an id.
-Exclusion claims from step 2 filter expectations: nothing excluded is proposed.
+Scope-exclusion obligations filter expectations: nothing excluded is proposed.
 
 **Step 6. Omission check.** A separate call, with a different question from
 step 3: given the mandate's claims and the current obligation set plus
@@ -235,7 +237,7 @@ find little; it stays as a backstop and its merge count is reported.
 
 Review-state holds, for the run:
 
-- the per-unit extraction decision (step 1), claims with kinds (step 2);
+- the per-unit extraction decision (step 1), claims (step 2);
 - obligations, each with: text, type, provenance, supporting claim ids, and if
   clarified, the question id and the original text;
 - dropped obligations with reasons (step 4);
