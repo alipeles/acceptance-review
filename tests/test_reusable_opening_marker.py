@@ -59,13 +59,39 @@ def test_a_provider_needing_a_breakpoint_gets_one_at_the_end_of_the_opening():
     assert isinstance(marked[2]["content"], str), "the subject is not part of the opening"
 
 
-def test_a_provider_that_needs_no_breakpoint_is_sent_the_request_untouched():
+def test_a_provider_that_needs_no_breakpoint_is_sent_the_request_untouched(tmp_path, monkeypatch):
     """OpenAI reuses a repeated opening on prefix stability alone. There is no
     parameter, so the honest behaviour is to change nothing — not to invent a
-    marker the provider will read as prompt text."""
-    messages = _request(_LONG)
+    marker the provider will read as prompt text.
 
-    assert mark_reusable_opening(messages, "openai/gpt-5.4-mini") == messages
+    Decided by the path's declared capabilities (#432), not by the model's name:
+    the LiteLLM path declares no breakpoints, so what reaches LiteLLM is the
+    request exactly as built, however long its opening."""
+    from acceptance import llm
+    from acceptance.llm import Mode, ModelClient, StrictResponseModel, TranscriptStore
+    from acceptance.providers import LITELLM_CAPABILITIES
+    from tests.support import _fake_response
+
+    class _Answer(StrictResponseModel):
+        verdict: str
+
+    sent: list[list[dict]] = []
+
+    def provider(**kwargs):
+        sent.append(kwargs["messages"])
+        return _fake_response('{"verdict": "ok"}')
+
+    monkeypatch.setattr(llm, "_default_completion_fn", provider)
+    messages = _request(_LONG)
+    ModelClient(
+        model="openai/gpt-5.4-mini",
+        mode=Mode.RECORD,
+        store=TranscriptStore(tmp_path),
+        key_check=lambda model: [],
+    ).complete(messages, _Answer)
+
+    assert not LITELLM_CAPABILITIES.cache_breakpoints
+    assert sent == [messages]
 
 
 def test_an_opening_below_the_models_minimum_is_left_unmarked():

@@ -408,15 +408,19 @@ def test_the_cases_issue_no_live_model_calls(monkeypatch):
     every client the suite builds carries its own `completion_fn`, and nothing
     but this test would notice one that stopped.
 
-    `_default_completion_fn` is the single door to litellm (`llm.py`), so
-    breaking it is sufficient.
+    There are two doors to a provider: `_default_completion_fn` for LiteLLM
+    (`llm.py`), and `_default_sdk_client` for the native Anthropic path (#432).
+    Breaking both is sufficient. The second is broken for every test already
+    (`conftest._no_live_anthropic`); it is broken here as well so this test
+    says so on its own.
     """
-    from acceptance import llm
+    from acceptance import llm, providers
 
     def forbidden(**kwargs):
         raise AssertionError("the suite reached the live provider path")
 
     monkeypatch.setattr(llm, "_default_completion_fn", forbidden)
+    monkeypatch.setattr(providers, "_default_sdk_client", forbidden)
     for behaviour in ("faithful", "lossy", "permissive"):
         score_case(_scored(CASE_DIRS[0], behaviour))
 

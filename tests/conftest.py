@@ -32,6 +32,28 @@ def _no_live_jev(monkeypatch):
     monkeypatch.setattr(jev, "_default_post", refuse)
 
 
+@pytest.fixture(autouse=True)
+def _no_live_anthropic(monkeypatch):
+    """Turn any live call through the Anthropic SDK into a failure (#432).
+
+    The native Anthropic path does not go through LiteLLM, so a test that
+    breaks `llm._default_completion_fn` to prove nothing went live would no
+    longer see a Claude call. This closes the other door: the one factory the
+    direct path and the batcher build their SDK client from. A test that wants
+    the native path answers it with `tests.support.use_fake_anthropic`.
+    """
+    from acceptance import providers
+
+    def refuse():
+        raise AssertionError(
+            "a test reached the live Anthropic SDK; answer it with "
+            "`use_fake_anthropic(monkeypatch)` (tests/support.py), or inject a "
+            "completion_fn"
+        )
+
+    monkeypatch.setattr(providers, "_default_sdk_client", refuse)
+
+
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
 

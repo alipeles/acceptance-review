@@ -775,7 +775,10 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
     parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
-        help=f"Model to route via LiteLLM (default: {DEFAULT_MODEL}).",
+        help=(
+            "Model as provider/model: anthropic/ models go through Anthropic's own "
+            f"SDK, any other provider through LiteLLM (default: {DEFAULT_MODEL})."
+        ),
     )
     parser.add_argument(
         "--mode",
