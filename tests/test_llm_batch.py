@@ -1,11 +1,11 @@
 """Sending a run's live calls through the Message Batches API (#414).
 
-Every test here goes through the real LiteLLM path, not an injected completion
-function, because that path is what batching changes: the batcher replaces the
-HTTP client underneath LiteLLM. Nothing reaches the network. A direct call is
-answered by a stand-in for LiteLLM's own HTTP client, and a batch by a stand-in
-for the Anthropic SDK's batch endpoints; both answer from one fake provider, so
-a direct call and a batched one can be compared request for request.
+Every test here goes through the real native Anthropic path (#432), not an
+injected completion function, because that path is what batching changes: the
+adapter hands its request to the batcher instead of posting it. Nothing reaches
+the network. A direct call and a batch are both answered by one stand-in for
+the Anthropic SDK (`tests.support.FakeAnthropic`), so a direct call and a
+batched one can be compared request for request.
 """
 
 from __future__ import annotations
@@ -13,12 +13,10 @@ from __future__ import annotations
 import ast
 import json
 import threading
-import time
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from litellm.llms.custom_httpx.http_handler import HTTPHandler
 from pydantic import BaseModel
 
 from acceptance import cli, llm, llm_batch
@@ -38,9 +36,12 @@ from acceptance.review_state import Component, EvidenceTier, Finding, Link, Revi
 from acceptance.usage import summarize as summarize_usage
 from tests.support import (
     _EMPTY_BY_SCHEMA,
+    FakeAnthropic,
     _completed,
     client_dispatching,
     constant_embedding_fn,
+    message_text,
+    use_fake_anthropic,
 )
 from tests.test_pipeline_request_openings import _JUDGMENTS, _TASK, _repo
 
@@ -57,108 +58,9 @@ ARCHETYPES_DIR = Path(__file__).resolve().parent / "fixtures" / "archetypes"
 _DIRECT_FIELDS = {"request", "response", "usage", "stop_reason", "controls_applied"}
 
 
-class FakeProvider:
-    """Answers direct calls and batches alike, differently every time.
-
-    The answer drifts so a test can tell a replayed answer from a fresh one,
-    as `test_determinism.py`'s provider does.
-    """
-
-    def __init__(self) -> None:
-        self.calls = 0
-        # Answers a native request body with the reply's text; unset, the
-        # provider answers every call as a `Verdict`.
-        self.responder = None
-        self.direct: list[dict] = []
-        self.direct_headers: list[dict] = []
-        self.batches: list[dict] = []
-        # custom_id -> how each result should come back; absent means succeeded.
-        self.outcomes: list = []
-        self.batches_api = SimpleNamespace(
-            create=self._create, retrieve=self._retrieve, results=self._results
-        )
-        self.sdk = SimpleNamespace(messages=SimpleNamespace(batches=self.batches_api))
-
-    def message(self, body: dict) -> dict:
-        self.calls += 1
-        if self.responder is not None:
-            text = self.responder(body)
-        else:
-            text = json.dumps({"supported": True, "rationale": f"answer #{self.calls}"})
-        return {
-            "id": f"msg_{self.calls}",
-            "type": "message",
-            "role": "assistant",
-            "model": body["model"],
-            "content": [{"type": "text", "text": text}],
-            "stop_reason": "end_turn",
-            "stop_sequence": None,
-            "usage": {
-                "input_tokens": 1000,
-                "output_tokens": 200,
-                "cache_read_input_tokens": 0,
-                "cache_creation_input_tokens": 0,
-            },
-        }
-
-    def direct_transport(self) -> HTTPHandler:
-        provider = self
-
-        class Direct(HTTPHandler):
-            def post(self, url, data=None, headers=None, **_):  # type: ignore[override]
-                import httpx
-
-                body = json.loads(data)
-                provider.direct.append(body)
-                provider.direct_headers.append(dict(headers or {}))
-                return httpx.Response(
-                    200,
-                    content=json.dumps(provider.message(body)).encode(),
-                    request=httpx.Request("POST", url),
-                )
-
-        return Direct()
-
-    def _create(self, requests, extra_headers=None):
-        batch = {
-            "id": f"batch_{len(self.batches)}",
-            "requests": list(requests),
-            "headers": extra_headers,
-        }
-        self.batches.append(batch)
-        return SimpleNamespace(id=batch["id"], processing_status="in_progress")
-
-    def _retrieve(self, batch_id):
-        return SimpleNamespace(id=batch_id, processing_status="ended")
-
-    def _results(self, batch_id):
-        batch = next(b for b in self.batches if b["id"] == batch_id)
-        outcome = self.outcomes.pop(0) if self.outcomes else "succeeded"
-        for request in batch["requests"]:
-            if outcome == "missing":
-                continue
-            if outcome == "succeeded":
-                result = SimpleNamespace(type="succeeded", message=self.message(request["params"]))
-            elif outcome in ("expired", "canceled"):
-                result = SimpleNamespace(type=outcome)
-            else:
-                error = SimpleNamespace(type=outcome, message="the provider said no")
-                result = SimpleNamespace(type="errored", error=SimpleNamespace(error=error))
-            yield SimpleNamespace(custom_id=request["custom_id"], result=result)
-
-    def batched_bodies(self) -> list[dict]:
-        return [request["params"] for batch in self.batches for request in batch["requests"]]
-
-
 @pytest.fixture
-def provider(monkeypatch) -> FakeProvider:
-    fake = FakeProvider()
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-never-sent")
-    monkeypatch.setattr(
-        "litellm.llms.anthropic.chat.handler.get_httpx_client",
-        lambda *args, **kwargs: fake.direct_transport(),
-    )
-    monkeypatch.setattr(llm_batch, "_default_sdk_client", lambda: fake.sdk)
+def provider(monkeypatch) -> FakeAnthropic:
+    fake = use_fake_anthropic(monkeypatch)
     monkeypatch.setattr(llm_batch, "GATHER_SECONDS", 0.05)
     monkeypatch.setattr(llm_batch, "POLL_SECONDS", 0.01)
     monkeypatch.setattr(llm, "_FIRST_BACKOFF_SECONDS", 0.0)
@@ -188,14 +90,12 @@ def test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
 
 
 def test_the_batch_carries_the_request_a_direct_call_sends(tmp_path, provider):
-    """What was asked does not depend on how it was sent: the body in the batch
-    is the body LiteLLM posts on a direct call, breakpoints and schema included."""
+    """What was asked does not depend on how it was sent: the params in the
+    batch are the params a direct call sends, breakpoints and schema included."""
     _client(tmp_path / "direct", batch=False).complete(MESSAGES, Verdict)
     _client(tmp_path / "batched", batch=True).complete(MESSAGES, Verdict)
 
     assert provider.batched_bodies() == provider.direct
-    beta = provider.direct_headers[0].get("anthropic-beta")
-    assert provider.batches[0]["headers"] == ({"anthropic-beta": beta} if beta else None)
 
 
 def test_a_batched_recording_replays_with_no_live_call(tmp_path, provider):
@@ -358,7 +258,7 @@ def test_a_stage_on_another_provider_is_sent_directly_in_a_batched_run(tmp_path)
     )
     client.complete(MESSAGES, Verdict)
 
-    assert "client" not in seen[0]
+    assert len(seen) == 1
     assert "sent_via" not in _record(client)
 
 
@@ -444,15 +344,19 @@ def test_the_instability_experiment_batches_when_asked(tmp_path, batch):
     ],
 )
 def test_the_provider_is_the_one_the_model_name_states(model, provider):
-    """Read off the configured name, never inferred from what the model is called."""
+    """Read off the configured name, never inferred from what the model is called.
+    The native adapter follows the same decision, so they cannot disagree."""
     assert llm.provider_of(model) == provider
-    # Cache breakpoints follow the same decision, so they cannot disagree with it.
-    assert llm._needs_explicit_marker(model) is (provider == llm.ANTHROPIC)
+    client = ModelClient(model=model, store=llm.TranscriptStore("unused"))
+    assert (client._native_adapter(model) is not None) is (provider == llm.ANTHROPIC)
 
 
 def test_the_default_model_is_one_that_batches():
-    """Batching applies to Anthropic models only, and the default is one."""
-    assert llm._needs_explicit_marker(DEFAULT_MODEL)
+    """Batching is declared by the Anthropic adapter, and the default model
+    takes that adapter."""
+    client = ModelClient(model=DEFAULT_MODEL, store=llm.TranscriptStore("unused"))
+    adapter = client._native_adapter(DEFAULT_MODEL)
+    assert adapter is not None and adapter.capabilities.batching
     assert DEFAULT_MAX_IN_FLIGHT < BATCH_CALLS_IN_FLIGHT
 
 
@@ -466,9 +370,8 @@ def test_a_client_with_batching_off_sends_directly_and_creates_no_batch(tmp_path
 
 
 def test_an_injected_completion_function_is_never_batched(tmp_path):
-    """It never reaches LiteLLM's HTTP client, so a recording saying it was
-    batched would be false, and handing it a transport it cannot use would
-    break it."""
+    """It stands in for the provider and never reaches the batcher, so a
+    recording saying it was batched would be false."""
     seen: list[dict] = []
 
     def completion_fn(**kwargs):
@@ -491,7 +394,7 @@ def test_an_injected_completion_function_is_never_batched(tmp_path):
     )
     client.complete(MESSAGES, Verdict)
 
-    assert "client" not in seen[0]
+    assert len(seen) == 1
     assert "sent_via" not in _record(client)
 
 
@@ -533,8 +436,12 @@ def _review_arguments(tmp_path) -> dict:
 
 def _answering_as_the_pipeline_double(body: dict) -> str:
     """Answer a native request the way `client_dispatching(_JUDGMENTS)` does."""
-    schema = body["output_format"]["schema"]
-    messages = [{"role": "system", "content": body.get("system", "")}, *body["messages"]]
+    schema = body["output_config"]["format"]["schema"]
+    system = "".join(block["text"] for block in body.get("system", []))
+    messages = [
+        {"role": "system", "content": system},
+        *({"role": m["role"], "content": message_text(m)} for m in body["messages"]),
+    ]
     kwargs = {
         "messages": messages,
         "response_format": {"json_schema": {"name": schema["title"], "schema": schema}},
@@ -661,14 +568,21 @@ def test_a_batching_client_decomposes_more_than_the_default_at_once(tmp_path):
         client = client_dispatching({})
         client.__class__ = type("_Limited", (ModelClient,), {"calls_in_flight": limit})
         answer = client._completion_fn
-        in_flight, peak, lock = [0], [0], threading.Lock()
+        in_flight, peak = [0], [0]
+        changed = threading.Condition()
 
         def watched(**kwargs):
-            with lock:
+            # Held until more calls are in flight than the default allows, or a
+            # second passes. A fixed sleep measured how fast threads start
+            # rather than how many the stage allows: each call's work before it
+            # reaches the provider is serialised, and once LiteLLM was no longer
+            # imported on the first call (#432), nothing lined the threads up.
+            with changed:
                 in_flight[0] += 1
                 peak[0] = max(peak[0], in_flight[0])
-            time.sleep(0.05)
-            with lock:
+                changed.notify_all()
+                changed.wait_for(lambda: in_flight[0] > DEFAULT_MAX_IN_FLIGHT, timeout=1.0)
+            with changed:
                 in_flight[0] -= 1
             return answer(**kwargs)
 

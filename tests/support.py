@@ -990,3 +990,122 @@ def _corpus_config(model: str | None, mode: Mode):
         mode=mode,
         transcript_root=RECORDED_TRANSCRIPTS,
     )
+
+
+class FakeAnthropic:
+    """Stands in for the Anthropic SDK client on the native path (#432).
+
+    Answers the four things `providers.AnthropicAdapter` and `MessageBatcher`
+    ask of the SDK — a message, a token count, a model's output ceiling, and the
+    batch endpoints — with no network. Every request it receives is kept, so a
+    test can assert what was sent.
+
+    The answer drifts with each call, so a test can tell a replayed answer from
+    a fresh one. `responder` answers a request's params with the reply's text;
+    unset, every call is answered as `{"supported": true, "rationale": ...}`.
+    """
+
+    def __init__(self, usage: dict | None = None, max_tokens: int = 128_000) -> None:
+        self.calls = 0
+        self.responder = None
+        self.usage = usage or {
+            "input_tokens": 1000,
+            "output_tokens": 200,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0,
+        }
+        self.max_output = max_tokens
+        #: Params of each direct `messages.create`, without the timeout.
+        self.direct: list[dict] = []
+        self.timeouts: list = []
+        self.counted: list[dict] = []
+        self.retrieved: list[str] = []
+        self.batches: list[dict] = []
+        #: How each batch's results come back, in order; absent means succeeded.
+        self.outcomes: list = []
+        #: Exceptions `messages.create` raises before answering, in order.
+        self.failures: list[BaseException] = []
+        self.tokens_per_count: int | None = None
+        self.messages = SimpleNamespace(
+            create=self._create,
+            count_tokens=self._count_tokens,
+            batches=SimpleNamespace(
+                create=self._batch_create, retrieve=self._batch_retrieve, results=self._results
+            ),
+        )
+        self.models = SimpleNamespace(retrieve=self._retrieve)
+
+    def message(self, params: dict) -> dict:
+        self.calls += 1
+        if self.responder is not None:
+            text = self.responder(params)
+        else:
+            text = json.dumps({"supported": True, "rationale": f"answer #{self.calls}"})
+        return {
+            "id": f"msg_{self.calls}",
+            "type": "message",
+            "role": "assistant",
+            "model": params["model"],
+            "content": [{"type": "text", "text": text}],
+            "stop_reason": "end_turn",
+            "stop_sequence": None,
+            "usage": dict(self.usage),
+        }
+
+    def _create(self, timeout=None, **params) -> dict:
+        self.direct.append(params)
+        self.timeouts.append(timeout)
+        if self.failures:
+            raise self.failures.pop(0)
+        return self.message(params)
+
+    def _count_tokens(self, **params) -> SimpleNamespace:
+        self.counted.append(params)
+        if self.tokens_per_count is not None:
+            return SimpleNamespace(input_tokens=self.tokens_per_count)
+        text = json.dumps(params.get("system", "")) + json.dumps(params["messages"])
+        return SimpleNamespace(input_tokens=len(text) // 4)
+
+    def _retrieve(self, model: str) -> SimpleNamespace:
+        self.retrieved.append(model)
+        return SimpleNamespace(id=model, max_tokens=self.max_output)
+
+    def _batch_create(self, requests) -> SimpleNamespace:
+        batch = {"id": f"batch_{len(self.batches)}", "requests": list(requests)}
+        self.batches.append(batch)
+        return SimpleNamespace(id=batch["id"], processing_status="in_progress")
+
+    def _batch_retrieve(self, batch_id) -> SimpleNamespace:
+        return SimpleNamespace(id=batch_id, processing_status="ended")
+
+    def _results(self, batch_id):
+        batch = next(b for b in self.batches if b["id"] == batch_id)
+        outcome = self.outcomes.pop(0) if self.outcomes else "succeeded"
+        for request in batch["requests"]:
+            if outcome == "missing":
+                continue
+            if outcome == "succeeded":
+                result = SimpleNamespace(type="succeeded", message=self.message(request["params"]))
+            elif outcome in ("expired", "canceled"):
+                result = SimpleNamespace(type=outcome)
+            else:
+                error = SimpleNamespace(type=outcome, message="the provider said no")
+                result = SimpleNamespace(type="errored", error=SimpleNamespace(error=error))
+            yield SimpleNamespace(custom_id=request["custom_id"], result=result)
+
+    def batched_bodies(self) -> list[dict]:
+        return [request["params"] for batch in self.batches for request in batch["requests"]]
+
+
+def use_fake_anthropic(monkeypatch, fake: FakeAnthropic | None = None) -> FakeAnthropic:
+    """Answer every native Anthropic call in this test from `fake`.
+
+    Replaces the one factory both the direct path and the batcher build their
+    SDK client from, so nothing on the native path can reach the network.
+    """
+    from acceptance import providers
+
+    fake = fake or FakeAnthropic()
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-never-sent")
+    monkeypatch.setattr(providers, "_default_sdk_client", lambda: fake)
+    return fake

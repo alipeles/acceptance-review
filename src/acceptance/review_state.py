@@ -1223,9 +1223,10 @@ class ReviewProvenance(_Model):
     `Mode` enum, so the data model stays independent of the LLM harness.
 
     Requested and honoured controls are separate fields because they diverge.
-    The harness sends determinism controls through LiteLLM with `drop_params`,
-    which lets a provider that rejects a control run anyway rather than failing
-    the review — so what we asked for is intent, and only `controls_in_force`
+    A provider that rejects a control runs without it rather than failing the
+    review: LiteLLM drops it with `drop_params`, and the native Anthropic
+    adapter never sends a temperature or seed Claude would refuse (#432) — so
+    what we asked for is intent, and only `controls_in_force`
     describes the run that actually happened (#160). Reporting a single set
     would have provenance claim a seed the provider never received.
     """

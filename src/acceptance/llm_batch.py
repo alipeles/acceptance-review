@@ -11,19 +11,19 @@ default.
 Nothing above `ModelClient._live_call` knows a batch exists. Every stage still
 calls `client.complete` once per question, from the threads `concurrency`
 already runs it on, and each call still blocks until its own answer is back.
-What changes is the transport underneath LiteLLM: `MessageBatcher.transport()`
-is an HTTP client that, instead of posting a request to `/v1/messages`, queues
-the request body it was handed and waits. When no new request has arrived for
-`gather_seconds`, everything queued goes out as one Message Batch, and each
-answer is handed back to the thread that asked for it, matched by `custom_id`.
+What changes is where the Anthropic adapter (`providers.AnthropicAdapter`)
+sends the request it built: instead of posting it to `/v1/messages`, it hands
+it to `MessageBatcher.send`, which queues it and waits. When no new request has
+arrived for `gather_seconds`, everything queued goes out as one Message Batch,
+and each answer is handed back to the thread that asked for it, matched by
+`custom_id`.
 
-LiteLLM still builds the request and still parses the reply. That is the point
-of replacing the transport rather than the call: the body in the batch is the
-body a direct call would have sent — the same `output_format`, the same
-`cache_control` breakpoints, the same dropped controls — and the reply goes
-through the same normalisation, usage extraction and pricing. A batched
-recording and a direct one cannot drift apart in shape, because no code here
-translates either of them.
+The adapter builds the request and reads the reply either way. The params in
+the batch are the params a direct call sends — the same `output_config`, the
+same `cache_control` breakpoint, the same controls left out — and the reply goes
+through the same reading of text, usage and price. A batched recording and a
+direct one cannot drift apart in shape, because no code here translates either
+of them.
 
 ## What it does not change
 
@@ -46,14 +46,6 @@ import threading
 import time
 from concurrent.futures import Future
 from typing import Any
-
-#: What a batched call costs as a share of the same call sent directly. Applied
-#: to the recorded `cost_usd`, which LiteLLM prices at the direct rate because
-#: it cannot see that the call was batched.
-BATCH_PRICE_FACTOR = 0.5
-
-#: The value of a recording's `sent_via` field when its call was batched.
-SENT_VIA_BATCH = "batch"
 
 #: How many calls may be in flight at once while batching. The default of eight
 #: in `concurrency` is a promise to a provider's rate limit, which a batch does
@@ -94,8 +86,8 @@ _ERROR_STATUS = {
 class BatchCallError(Exception):
     """A batched call that came back without an answer.
 
-    It carries `status_code` because that is what LiteLLM and
-    `_call_provider` read to decide whether a failure is worth asking again.
+    It carries `status_code` because that is what `_call_provider` reads to
+    decide whether a failure is worth asking again.
     A result that expired or was cancelled before it ran is reported as 500:
     nothing was wrong with the request, so asking again is the right answer.
     """
@@ -106,16 +98,17 @@ class BatchCallError(Exception):
 
 
 def _default_sdk_client() -> Any:
-    """The Anthropic SDK client. Imported lazily so nothing else needs the SDK."""
-    import anthropic
+    """The Anthropic SDK client, built the way the direct path builds it."""
+    from acceptance.providers import _default_sdk_client as build
 
-    return anthropic.Anthropic()
+    return build()
 
 
-def _custom_id(body: str, beta: str | None) -> str:
+def _custom_id(params: dict) -> str:
     # 64 hex characters: exactly the longest `custom_id` a batch accepts. Two
     # identical requests share one id, and therefore one answer.
-    return hashlib.sha256(f"{beta or ''}\n{body}".encode()).hexdigest()
+    body = json.dumps(params, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(body.encode()).hexdigest()
 
 
 def _as_dict(message: Any) -> dict:
@@ -130,7 +123,7 @@ class MessageBatcher:
     One batcher serves a whole run, shared by every thread that calls the
     model. `sdk_client` is injectable so the batch path can be exercised
     without the network; by default it is the SDK's own client, which reads
-    the same API key LiteLLM does.
+    the same API key a direct call does.
     """
 
     def __init__(
@@ -143,34 +136,23 @@ class MessageBatcher:
         self._gather_seconds = GATHER_SECONDS if gather_seconds is None else gather_seconds
         self._poll_seconds = POLL_SECONDS if poll_seconds is None else poll_seconds
         self._lock = threading.Lock()
-        self._transport: Any = None
-        # Requests waiting to be sent, by beta header. A batch carries its beta
-        # headers once for every request in it, so requests that need
-        # different ones cannot share a batch.
-        self._queued: dict[str | None, dict[str, dict]] = {}
+        # Requests waiting to be sent, by custom_id.
+        self._queued: dict[str, dict] = {}
         self._waiting: dict[str, Future] = {}
         self._last_queued = 0.0
         self._gathering = False
         #: Ids of the batches sent, in the order they were created.
         self.batch_ids: list[str] = []
 
-    def transport(self) -> Any:
-        """An HTTP client for LiteLLM that queues each request into a batch."""
-        with self._lock:
-            if self._transport is None:
-                self._transport = _batch_transport(self)
-            return self._transport
-
-    def send(self, body: str, headers: dict[str, str]) -> dict:
-        """Queue one request body and block until its answer is back."""
-        beta = headers.get("anthropic-beta")
-        custom_id = _custom_id(body, beta)
+    def send(self, params: dict) -> dict:
+        """Queue one Messages API request and block until its answer is back."""
+        custom_id = _custom_id(params)
         with self._lock:
             future = self._waiting.get(custom_id)
             if future is None:
                 future = Future()
                 self._waiting[custom_id] = future
-                self._queued.setdefault(beta, {})[custom_id] = json.loads(body)
+                self._queued[custom_id] = params
             self._last_queued = time.monotonic()
             if not self._gathering:
                 self._gathering = True
@@ -187,27 +169,25 @@ class MessageBatcher:
                     self._gathering = False
                     break
             time.sleep(self._gather_seconds - quiet)
-        for beta, requests in queued.items():
-            items = list(requests.items())
-            for start in range(0, len(items), MAX_REQUESTS_PER_BATCH):
-                chunk = dict(items[start : start + MAX_REQUESTS_PER_BATCH])
-                threading.Thread(target=self._run_batch, args=(beta, chunk), daemon=True).start()
+        items = list(queued.items())
+        for start in range(0, len(items), MAX_REQUESTS_PER_BATCH):
+            chunk = dict(items[start : start + MAX_REQUESTS_PER_BATCH])
+            threading.Thread(target=self._run_batch, args=(chunk,), daemon=True).start()
 
-    def _run_batch(self, beta: str | None, requests: dict[str, dict]) -> None:
+    def _run_batch(self, requests: dict[str, dict]) -> None:
         try:
-            self._answer(beta, requests)
+            self._answer(requests)
         except Exception as exc:  # noqa: BLE001 — every waiting caller must hear of it
             # Whatever went wrong with the batch as a whole went wrong for every
             # call in it, and a call left waiting would hang its stage forever.
             self._settle(requests, error=exc)
 
-    def _answer(self, beta: str | None, requests: dict[str, dict]) -> None:
+    def _answer(self, requests: dict[str, dict]) -> None:
         sdk = self._sdk_client if self._sdk_client is not None else _default_sdk_client()
         self._sdk_client = sdk
         batches = sdk.messages.batches
         batch = batches.create(
             requests=[{"custom_id": cid, "params": params} for cid, params in requests.items()],
-            extra_headers={"anthropic-beta": beta} if beta else None,
         )
         with self._lock:
             self.batch_ids.append(batch.id)
@@ -248,26 +228,3 @@ class MessageBatcher:
                 future.set_exception(error)
             else:
                 future.set_result(answer)
-
-
-def _batch_transport(batcher: MessageBatcher) -> Any:
-    """An HTTP client that LiteLLM posts an Anthropic request to.
-
-    LiteLLM hands it the finished request body instead of sending it, and
-    parses what comes back as if the provider had replied. It subclasses
-    LiteLLM's own client because LiteLLM uses an injected client only when it
-    is one; it is defined here, at first use, so that importing this module
-    does not import LiteLLM.
-    """
-    import httpx
-    from litellm.llms.custom_httpx.http_handler import HTTPHandler
-
-    class BatchTransport(HTTPHandler):
-        def post(self, url: str, data: Any = None, headers: Any = None, **_: Any) -> Any:  # type: ignore[override]
-            body = data if isinstance(data, str) else json.dumps(data)
-            message = batcher.send(body, dict(headers or {}))
-            return httpx.Response(
-                200, content=json.dumps(message).encode(), request=httpx.Request("POST", url)
-            )
-
-    return BatchTransport()

@@ -5,26 +5,30 @@ A thin layer between the checker's judgments and whatever model produces them:
 - **Schema-constrained.** Every call names a pydantic `response_model`; the
   model is asked for that JSON schema and the reply is validated against it.
   A malformed reply raises `SchemaValidationError` — never silently accepted.
-- **Provider-agnostic.** Requests go through LiteLLM, so the model is a
-  configuration string (`anthropic/claude-sonnet-5`, `openai/gpt-...`) and
-  providers can be compared on quality and cost without touching call sites.
+- **Provider-agnostic.** The model is a configuration string
+  (`anthropic/claude-sonnet-5-5`, `openai/gpt-...`) and providers can be
+  compared on quality and cost without touching call sites. The provider the
+  name states picks the adapter that sends the call (#432, `providers`):
+  Anthropic's own SDK for `anthropic/`, LiteLLM for every other provider.
 - **Replay-first.** Every prompt/response is recorded to a transcript store
   keyed by request content. In `REPLAY` mode no live call is made at all — a
   missing transcript is an error, not a silent fallback to the network.
-- **Reusable openings marked per model.** On Anthropic models the client marks
-  where a request's reusable opening ends (`mark_reusable_opening`), when the
-  opening is at least that model's documented minimum. Anthropic ignores a
-  breakpoint below the minimum and caches nothing; it does not reject one.
+- **Reusable openings marked where the provider takes a marker.** When the
+  adapter declares cache breakpoints, the client marks where a request's
+  reusable opening ends (`mark_reusable_opening`), when the opening is at least
+  that model's documented minimum. Anthropic ignores a breakpoint below the
+  minimum and caches nothing; it does not reject one.
 - **Optionally batched.** A client given a `MessageBatcher` sends its live
-  Anthropic calls through the Message Batches API at half price (#414; see
-  `llm_batch`). The request key is the same either way, so a batched recording
-  replays like any other; the recording notes `sent_via: "batch"`.
+  calls through the Message Batches API at half price when its adapter declares
+  batching (#414; see `llm_batch`). The request key is the same either way, so a
+  batched recording replays like any other; the recording notes
+  `sent_via: "batch"`.
 
 Transcripts deliberately record no wall-clock time and no run identifiers, so
 re-running the same input reproduces byte-identical state (M0.5's acceptance
-depends on this). LiteLLM is imported lazily inside the live path only, so
-replay-mode runs — including CI and this project's own tests — need neither
-the provider stack nor an API key.
+depends on this). LiteLLM and the Anthropic SDK are imported lazily inside the
+live path only, so replay-mode runs — including CI and this project's own
+tests — need neither the provider stack nor an API key.
 
 M0.5 owns the seed/temperature configuration layer; the fields exist here
 because they are part of a request's identity.
@@ -43,12 +47,8 @@ from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from acceptance.llm_batch import (
-    BATCH_CALLS_IN_FLIGHT,
-    BATCH_PRICE_FACTOR,
-    SENT_VIA_BATCH,
-    MessageBatcher,
-)
+from acceptance.llm_batch import BATCH_CALLS_IN_FLIGHT, MessageBatcher
+from acceptance.providers import ANTHROPIC, AnthropicAdapter
 from acceptance.request_blocks import reusable_opening
 from acceptance.serialization import canonical_json
 
@@ -161,6 +161,19 @@ def missing_keys(model: str) -> list[str]:
     return sorted(found.get("missing_keys") or [])
 
 
+def provider_missing_keys(model: str) -> list[str]:
+    """The key check of the path `model`'s live calls take (#398, #432).
+
+    The default completion path sends an `anthropic/` model through the native
+    adapter, which needs the Anthropic SDK's key, and every other model through
+    LiteLLM, which knows its providers' variable names. A plain function rather
+    than a method so two clients built the same way carry the same check.
+    """
+    if is_anthropic_api(model):
+        return AnthropicAdapter.missing_keys(model)
+    return missing_keys(model)
+
+
 def request_key(request: dict) -> str:
     """Content-address a request.
 
@@ -238,11 +251,6 @@ _MIN_REUSABLE_OPENING_TOKENS = {
 _DEFAULT_MIN_REUSABLE_OPENING_TOKENS = 512
 
 
-#: The provider a model name states for Anthropic's own API, which is what
-#: batches, takes explicit cache breakpoints, and spends Anthropic credits.
-ANTHROPIC = "anthropic"
-
-
 def provider_of(model: str) -> str | None:
     """The provider a configured model name states: the part before its first `/`.
 
@@ -262,22 +270,10 @@ def provider_of(model: str) -> str | None:
 def is_anthropic_api(model: str) -> bool:
     """Whether calls to `model` go to Anthropic's own API, per `provider_of`.
 
-    Every behaviour that turns on this — cache breakpoints, batching — asks here,
-    so none of them can drift into a test of its own.
+    This chooses the adapter and nothing else. What the call then does — a cache
+    breakpoint, a batch — is read from that adapter's declared capabilities.
     """
     return provider_of(model) == ANTHROPIC
-
-
-def _needs_explicit_marker(model: str) -> bool:
-    """Whether this provider must be TOLD where the reusable opening ends.
-
-    Anthropic-family models reuse an opening only where a `cache_control`
-    breakpoint says one ends. OpenAI-family models do it automatically on prefix
-    stability and offer no parameter at all, so for them the honest answer is
-    that there is nothing to mark — the ordering `request_blocks` does is the
-    whole of the lever.
-    """
-    return is_anthropic_api(model)
 
 
 def _minimum_reusable_opening(model: str) -> int:
@@ -293,7 +289,11 @@ def _minimum_reusable_opening(model: str) -> int:
     return _MIN_REUSABLE_OPENING_TOKENS[max(matches, key=len)]
 
 
-def mark_reusable_opening(messages: list[dict], model: str) -> list[dict]:
+def mark_reusable_opening(
+    messages: list[dict],
+    model: str,
+    count: Callable[[list[dict]], int] | None = None,
+) -> list[dict]:
     """Return `messages` with the end of the reusable opening marked for `model`.
 
     **This is the client's job and no stage's.** Where the boundary lies is a
@@ -303,24 +303,29 @@ def mark_reusable_opening(messages: list[dict], model: str) -> list[dict]:
     of every prompt builder, and `request_blocks.assemble` refuses a block that
     tries to write one anyway.
 
+    Called only for an adapter that declares cache breakpoints (#432). A
+    provider that reuses an opening on its own — OpenAI does it on prefix
+    stability and offers no parameter — is never sent a marker, because it would
+    read one as prompt text.
+
     Applied at send time, to a copy, and deliberately **not** to the hashed
     request: the marker is provider-specific and carries no meaning for what was
     asked, so putting it in the request key would make the same review
     irreproducible across providers and would re-key every transcript the first
     time this table changed.
 
-    Returns the messages unchanged when the provider needs no marker, and when
-    the opening is too short to be worth one — see `_minimum_reusable_opening`.
+    `count` gives the opening's length in tokens; the Anthropic adapter passes
+    Anthropic's exact count. Without one, LiteLLM's estimate is used. Returns
+    the messages unchanged when the opening is too short to be worth a marker —
+    see `_minimum_reusable_opening`.
     """
-    if not _needs_explicit_marker(model):
-        return messages
-
     opening = reusable_opening(messages)
     if not opening:
         return messages
 
     minimum = _minimum_reusable_opening(model)
-    if _count_tokens(opening, model) < minimum:
+    counted = count(opening) if count is not None else _count_tokens(opening, model)
+    if counted < minimum:
         return messages
 
     marked = [dict(message) for message in messages]
@@ -680,6 +685,11 @@ class ModelClient:
         self.temperature = temperature
         self.seed = seed
         self._completion_fn = completion_fn or _default_completion_fn
+        # The native path for models whose name states `anthropic/` (#432). Used
+        # only while `_completion_fn` is still the default: a caller that injects
+        # a function — every capability test — is answered by that function,
+        # whatever model it names. See `_native_adapter`.
+        self._anthropic = AnthropicAdapter()
         # A second model, on the same store and the same mode. It is not a
         # fallback for `model` and never answers a judgment: nothing decides
         # anything on an embedding, which only narrows which questions get
@@ -692,7 +702,9 @@ class ModelClient:
         # no provider behind it and needs no key, so by default it is not
         # checked — a test's fake would otherwise fail wherever no key is set,
         # which is CI. `key_check` overrides that for both paths at once.
-        self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+        self._completion_key_check = key_check or (
+            provider_missing_keys if completion_fn is None else None
+        )
         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
         # Models whose keys have been confirmed present, so each is asked once.
         self._keys_confirmed: set[str] = set()
@@ -732,6 +744,17 @@ class ModelClient:
         to the usual eight would go out as one small batch after another.
         """
         return BATCH_CALLS_IN_FLIGHT if self._batcher is not None else None
+
+    def _native_adapter(self, model: str) -> AnthropicAdapter | None:
+        """The adapter that sends `model`'s live calls, or None for the LiteLLM path.
+
+        Chosen by the provider the model's name states (`provider_of`), and only
+        while the client's completion function is the default: an injected
+        function stands in for the provider and answers every model itself.
+        """
+        if self._completion_fn is _default_completion_fn and is_anthropic_api(model):
+            return self._anthropic
+        return None
 
     def model_for(self, stage: str | None) -> str:
         """The model this stage runs on: its own if it names one, else the run's."""
@@ -1334,7 +1357,12 @@ class ModelClient:
         # computed offline, so asking first costs nothing, and it is the only
         # moment a dropped effort can still stop the run instead of being
         # recorded as having happened.
-        applied = self._effective_controls(request["model"], requested)
+        native = self._native_adapter(request["model"])
+        applied = (
+            native.effective_controls(request["model"], requested)
+            if native is not None
+            else self._effective_controls(request["model"], requested)
+        )
         if "reasoning_effort" in requested and (
             applied.get("reasoning_effort") != requested["reasoning_effort"]
         ):
@@ -1346,30 +1374,22 @@ class ModelClient:
                 "to a model that accepts one."
             )
 
-        # Only an Anthropic model can be batched here, and only through
-        # LiteLLM's HTTP client, which is what the batcher replaces. A stage on
-        # another provider is sent directly even in a batched run. So is a call
-        # through an injected completion function: it never reaches LiteLLM's
-        # HTTP client, and a recording saying it was batched would be false.
-        batched = (
-            self._batcher is not None
-            and self._completion_fn is _default_completion_fn
-            and is_anthropic_api(request["model"])
-        )
-        transport = {"client": self._batcher.transport()} if batched else {}
+        if native is not None:
+            return self._native_call(native, request, applied, stage)
 
+        # The LiteLLM path: every provider without an adapter of its own, and
+        # every injected completion function. It declares no cache breakpoints
+        # and no batching (`providers.LITELLM_CAPABILITIES`), so the messages go
+        # as built and the call goes directly, even in a batched run.
         response = self._call_provider(
             self._completion_fn,
             "completion",
             stage,
             model=request["model"],
-            # Marked here rather than in `request`, so the provider-specific
-            # breakpoint never reaches the request key. What was asked is the
-            # same question whichever provider answers it.
-            messages=mark_reusable_opening(request["messages"], request["model"]),
+            messages=request["messages"],
             # LiteLLM's `response_format` is its provider-agnostic interface —
-            # it translates this into each provider's own mechanism (Anthropic
-            # takes structured output as tool use) and normalizes the reply.
+            # it translates this into each provider's own mechanism and
+            # normalizes the reply.
             # We pass the schema rather than the model class only so it can be
             # ref-inlined first; passing the class would have LiteLLM call
             # `model_json_schema()` itself and reintroduce the `$defs` that
@@ -1387,7 +1407,6 @@ class ModelClient:
                 },
             },
             **requested,
-            **transport,
         )
 
         record = {
@@ -1404,13 +1423,56 @@ class ModelClient:
             # which have no provider to drop anything.
             "controls_applied": applied,
         }
-        if batched:
+        return record
+
+    def _native_call(
+        self,
+        adapter: AnthropicAdapter,
+        request: dict,
+        applied: dict,
+        stage: str | None,
+    ) -> dict:
+        """One live call through a native adapter (#432), as a recording.
+
+        What the call does is read from the adapter's declared capabilities: it
+        marks the reusable opening only if the adapter takes a breakpoint, and
+        goes through the batcher only if the run batches and the adapter can.
+        Building the request is inside the retried step because it asks the
+        provider two questions of its own — the model's output ceiling and the
+        opening's exact length — which can meet the same transient failures as
+        the call itself.
+        """
+        model = request["model"]
+        caps = adapter.capabilities
+        batched = self._batcher is not None and caps.batching
+        effort = applied.get("reasoning_effort")
+
+        def attempt(**_: Any) -> dict:
+            messages = request["messages"]
+            if caps.cache_breakpoints:
+                # Marked here rather than in `request`, so the provider-specific
+                # breakpoint never reaches the request key.
+                messages = mark_reusable_opening(
+                    messages, model, count=lambda opening: adapter.count_tokens(model, opening)
+                )
+            params = adapter.build_params(
+                model, messages, request["response_schema"]["schema"], effort
+            )
+            return adapter.send(params, self._batcher if batched else None)
+
+        message = self._call_provider(attempt, "completion", stage, model=model)
+        reply = adapter.reply(message, model, batched)
+        record = {
+            "request": request,
+            "response": reply.content,
+            "usage": reply.usage,
+            "stop_reason": reply.stop_reason,
+            "controls_applied": applied,
+        }
+        if reply.sent_via is not None:
             # Only on a batched call, so a direct recording keeps exactly the
-            # fields it always had. LiteLLM priced the reply at the direct
-            # rate, not knowing it was batched.
-            record["sent_via"] = SENT_VIA_BATCH
-            if "cost_usd" in record["usage"]:
-                record["usage"]["cost_usd"] *= BATCH_PRICE_FACTOR
+            # fields it always had.
+            record["sent_via"] = reply.sent_via
         return record
 
     @staticmethod

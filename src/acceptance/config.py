@@ -9,8 +9,9 @@ with disclosed variance — is deferred to the benchmark harness (M-B0.4), which
 layers variance reporting on top of these controls rather than replacing them.
 
 **On Claude the seed and temperature do nothing.** Claude has no seed, and has
-refused any `temperature` since 2026-10-21, so LiteLLM drops both and a Claude
-run is reproducible through its recorded transcripts alone (#412). The run still
+refused any `temperature` since 2026-10-21, so the Anthropic adapter sends
+neither (`providers.ANTHROPIC_CAPABILITIES`, #432) and a Claude run is
+reproducible through its recorded transcripts alone (#412). The run still
 requests temperature 0 and seed 0: they are part of the hashed request, so a
 Claude transcript keys the same way as any other, and the review's provenance
 records that the provider applied neither (`controls_in_force`). Reproducibility
@@ -49,7 +50,9 @@ from acceptance.review_state import (
     StageControls,
 )
 
-# LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
+# A `provider/model` string. Provider-agnostic: swap freely via --model /
+# RunConfig. `anthropic/` goes through the native Anthropic adapter, any other
+# provider through LiteLLM (#432).
 #
 # Claude Sonnet 5.5 for every stage, the owner's choice when #412 moved model
 # calls off OpenAI. It replaced `gpt-5.4-mini`, which ran almost every stage, and

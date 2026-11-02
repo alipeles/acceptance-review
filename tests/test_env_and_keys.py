@@ -21,8 +21,9 @@ import litellm  # noqa: F401
 import pytest
 from pydantic import BaseModel
 
-from acceptance import cli
+from acceptance import cli, providers
 from acceptance.llm import MissingKeyError, Mode, ModelClient, TranscriptStore, missing_keys
+from tests.support import FakeAnthropic
 
 PROVIDER_KEYS = ("OPENAI_API_KEY", "VOYAGE_API_KEY", "ANTHROPIC_API_KEY")
 MESSAGES = [{"role": "user", "content": "Does the test discriminate?"}]
@@ -233,8 +234,12 @@ def test_the_cli_finds_a_key_in_the_working_directorys_env(elsewhere, no_keys, m
     (elsewhere / ".env").write_text("ANTHROPIC_API_KEY=sk-ant-test\nVOYAGE_API_KEY=pa-test\n")
     task = elsewhere / "task.md"
     task.write_text("# Task: x\n\n## Task\n\nThe parser accepts empty input.\n")
-    provider = _spy(_fake_response)
-    monkeypatch.setattr("acceptance.llm._default_completion_fn", provider)
+    # The default model is Claude, which goes through the native Anthropic
+    # path (#432); the fake answers it there. Installed directly rather than
+    # with `use_fake_anthropic`, which sets a key of its own: here the key must
+    # come from `.env`.
+    fake = FakeAnthropic()
+    monkeypatch.setattr(providers, "_default_sdk_client", lambda: fake)
 
     cli.main(["decompose", "--task", str(task)])
 
@@ -242,7 +247,7 @@ def test_the_cli_finds_a_key_in_the_working_directorys_env(elsewhere, no_keys, m
     assert "acceptance: warning:" not in err
     assert "is not set" not in err
     # The key was found, so the call went out.
-    assert provider.calls
+    assert fake.direct
 
 
 def test_a_client_on_the_default_embedding_path_names_the_embedding_models_key(tmp_path, no_keys):

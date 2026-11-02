@@ -514,16 +514,20 @@ def test_each_case_is_scored_through_score_case_itself(corpus_worktrees):
 
 
 def test_no_provider_is_ever_contacted(corpus_worktrees, monkeypatch):
-    """The stronger form of "no live call": make the provider entrypoint itself
-    fail. `llm._default_completion_fn` calls `litellm.completion`, so a stage
-    that slipped past the injected stub would raise here instead of quietly
-    reaching the network."""
+    """The stronger form of "no live call": make the provider entrypoints
+    themselves fail. `llm._default_completion_fn` calls `litellm.completion`,
+    and the native Anthropic path builds its SDK client from
+    `providers._default_sdk_client` (#432), so a stage that slipped past the
+    injected stub would raise here instead of quietly reaching the network."""
     import litellm
+
+    from acceptance import providers
 
     def explode(*args, **kwargs):
         raise AssertionError("a live provider call was attempted")
 
     monkeypatch.setattr(litellm, "completion", explode)
+    monkeypatch.setattr(providers, "_default_sdk_client", explode)
 
     case = build_corpus_case(CASE_DIRS[0], REPO, CORPUS_DIR, corpus_worktrees / "wt0")
     obligations = [
