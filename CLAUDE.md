@@ -475,6 +475,17 @@ locally than on CI should be trusted again before it gates anything.
 full, including anything else those two turn up. Delete this block when both are
 done.
 
+#### Both gates are suspended for the decomposition redesign milestone
+
+Decided 2026-10-28. While milestone M11 (decomposition redesign, umbrella
+#435) is open, its tasks take neither Gate 1 nor Gate 2: no
+`current-task.md`, no `decompose` as a gate, no `check`. The stage under
+rebuild is the one the gates run on, so gating its rebuild behind its own
+output is circular. Run `decompose` on each task's issue text anyway, as
+data for the milestone's evaluation task (#440), and save the output under
+`dogfood-logs/` as usual. All other milestones are paused until M11 closes.
+This block is deleted by #444, the milestone's `CLAUDE.md` task.
+
 ### Rules that apply at both gates
 
 - **Read the test recommendations before forming an opinion.** When an obligation

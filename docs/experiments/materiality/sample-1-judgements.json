@@ -1,0 +1,235 @@
+{
+ "labels": {
+  "material": "A reasonable project would block the merge on this. The tool was right to flag it.",
+  "immaterial": "The finding is accurate as stated, but no reasonable project would block on it.",
+  "wrong": "The finding rests on a false claim: a test does cover it, the task excludes it, the sentence is not a requirement, or the defect cannot happen in this codebase."
+ },
+ "causes": {
+  "scope-exclusion-ignored": "The task's Scope exclusions rule this out and the tool did not apply them",
+  "existing-test-not-mapped": "A test that covers this exists and the tool did not connect it",
+  "non-requirement-sentence": "An explanatory or background sentence was turned into an obligation",
+  "duplicate-obligation": "Restates another obligation that is already judged",
+  "defect-outside-requirement": "The enumerated defect is generic robustness, not something the requirement asks for",
+  "defect-contradicts-task-or-design": "The enumerated defect describes behavior the task or a recorded decision explicitly wants",
+  "task-misread": "The tool misread what the task says",
+  "repo-convention": "The change follows an existing convention of the repo",
+  "accurate-not-blocking": "Accurate observation, fine to list, should not affect the verdict",
+  "unexplained-survivor": "A mutant survived but the edit was not recorded, so the claim cannot be checked"
+ },
+ "context": {
+  "feature": "Issue #5 adds usage telemetry to the job-search CRM's API: a middleware writes one row to a `usage` table after every HTTP response (who, which client, which route pattern, status, duration, and for MCP calls which tool). `POST /usage/view` lets the (future) web app report page views. `GET /admin/usage` gives the admin the rows plus a per-day summary. A standalone script prunes rows older than 180 days. The task explicitly excludes the web app and MCP server (they don't exist yet) and any scheduler setup.",
+  "run": "Gate 2, run 2. The tool's verdict was INCOMPLETE: 3 obligations 'not fully implemented' and 13 with 'non-discriminating test evidence'. The coding agent's own triage (judgement.md) attributed every finding to the tool and changed no code. Tests ran and mutants were injected, but the tool did not count the mutant results as evidence (edit verification was off), so every rating is a static prediction. Mutant outcomes are shown here as a second opinion on each defect.",
+  "agent_caveat": "The coding agent's view is the reviewed party grading the reviewer. It is shown for comparison, not as the answer."
+ },
+ "items": {
+  "app-usage-capture": {
+   "plain": "This is the task's opening sentence, 'Capture how the app is used'. It is the umbrella for everything else, not a separate behavior. The tool rated the tests 'partially supporting' because one of its three invented failure modes was not killed: the middleware ignores non-HTTP traffic (websockets, server startup events). This API has no websockets, and startup is not a 'response the API sends'.",
+   "label": "wrong",
+   "causes": ["defect-outside-requirement", "duplicate-obligation"],
+   "explanation": "Two of the three defects were caught by existing tests. The third (non-HTTP traffic not logged) cannot occur here: the API is HTTP only and the task says 'every response the API sends'. An umbrella sentence should not carry its own rating when its concrete parts (items 7, 24, 27, 31) are judged separately.",
+   "agent": "Tool issue: the real end-to-end tests exist and were not mapped.",
+   "defects": {
+    "app-usage-capture/middleware-not-capturing-non-http": {"call": "not-a-defect", "note": "No non-HTTP traffic exists in this API; lifespan events are not responses."},
+    "app-usage-capture/route-without-matched-pattern-not-recorded": {"call": "possible", "note": "Reasonable to check once; a test already kills it."},
+    "app-usage-capture/usage-route-not-mounted": {"call": "probable", "note": "Forgetting to include a router is a classic agent slip; three tests kill it."}
+   }
+  },
+  "admin-can-see-every-interaction": {
+   "plain": "The admin report must show every interaction. The tool worried that (a) non-HTTP traffic is missed, (b) a page-view call overwrites its own route with the page's route, and (c) rows with no owner or entity drop out of the summary. (b) is the design: a page view is recorded as one row naming the page, decided at Gate 1. (c) was caught by a test. (a) is the same non-HTTP point as item 1.",
+   "label": "wrong",
+   "causes": ["defect-outside-requirement", "defect-contradicts-task-or-design"],
+   "explanation": "The only defect that was not killed by a test is the non-HTTP one, which does not apply. The 'overwrites the route' defect describes the intended behavior.",
+   "agent": "Tool issue: the page-view row is the design.",
+   "defects": {
+    "admin-can-see-every-interaction/usage-route-misses-some-interactions": {"call": "not-a-defect", "note": "Same non-HTTP point; no edit could even be constructed for it."},
+    "admin-can-see-every-interaction/view-endpoint-not-counted-as-interaction": {"call": "not-a-defect", "note": "This is the recorded design decision. Two tests pin it."},
+    "admin-can-see-every-interaction/admin-summary-omits-rows-without-owner-or-entity": {"call": "possible", "note": "A fair question about the summary; killed by the mixed-day test."}
+   }
+  },
+  "separate-software-log": {
+   "plain": "The task explains that this log is separate from the existing domain event log. The tool turned that explanation into an 'invariant' and then listed three architecture opinions as defects: the usage table is registered on the same SQLAlchemy metadata as the domain tables, it is imported from the models package, and page views go through the same middleware as other requests. None of those is a behavior a test could fail; all three are how the code is deliberately built.",
+   "label": "wrong",
+   "causes": ["non-requirement-sentence", "duplicate-obligation"],
+   "explanation": "'Separate log' means a separate table, which exists. The defects are design preferences, not failure modes, and one of them (`already_present`) is literally a description of the code with a comment explaining why. Items 3, 4 and 6 are the same point three times.",
+   "agent": "Tool issue: recommendation is vague; the separate session is tested.",
+   "defects": {
+    "separate-software-log/usage-log-imported-into-domain-metadata": {"call": "not-a-defect", "note": "Intentional, commented in the code ('on the metadata, not in TABLES')."},
+    "separate-software-log/usage-table-shared-with-domain-models": {"call": "not-a-defect", "note": "Design opinion. Any edit broke the module at import time."},
+    "separate-software-log/usage-route-logs-through-domain-request-state": {"call": "not-a-defect", "note": "Describes the intended mechanism for page views."}
+   }
+  },
+  "separate-software-interaction-log": {
+   "plain": "Same sentence as item 3, decomposed a second time. The two defects are 'the middleware might not be installed on the real app' (already covered under item 1, where three tests kill it) and 'the code might write to the event log instead' (no edit could be constructed that did this).",
+   "label": "wrong",
+   "causes": ["duplicate-obligation", "defect-outside-requirement"],
+   "explanation": "Duplicate of items 3 and 6. The one testable defect here is killed under item 1. The mapped test (admin role permissions) has nothing to do with this obligation, which suggests the mapping was weak too.",
+   "agent": "Tool issue: existing tests not mapped.",
+   "defects": {
+    "separate-software-interaction-log/usage-middleware-not-installed-for-all-app-paths": {"call": "probable", "note": "Real failure mode, but it is item 1's 'route not mounted' again and is killed there."},
+    "separate-software-interaction-log/usage-row-written-to-domain-log-instead-of-separate-table": {"call": "not-a-defect", "note": "Nothing in the change touches the event log; no edit changed anything."}
+   }
+  },
+  "event-log-records-job-search-happenings": {
+   "plain": "The task says 'the event log records what happened in the job search' to contrast it with the new usage log. That sentence describes something that already exists. The tool made it an obligation of this change, found no code for it, and asked for a test of the event log.",
+   "label": "wrong",
+   "causes": ["non-requirement-sentence"],
+   "explanation": "Background sentence, not a requirement. The change should not be asked to prove the pre-existing event log works.",
+   "agent": "Tool issue: invented at Gate 1, already noted.",
+   "defects": {
+    "event-log-records-job-search-happenings/usage-log-confused-with-event-log": {"call": "not-a-defect", "note": "Asks the change to demonstrate behavior it did not touch."}
+   }
+  },
+  "software-interaction-log": {
+   "plain": "'This records what happened in the software' is the other half of the same contrast sentence. Third restatement of items 3 and 4. Defects: non-HTTP again, a vague 'row built from request state only', and 'summary excludes unmatched requests' (killed by three tests).",
+   "label": "wrong",
+   "causes": ["duplicate-obligation", "defect-outside-requirement"],
+   "explanation": "Duplicate umbrella; the only defect not killed is non-HTTP, which does not apply.",
+   "agent": "Tool issue: asks for an unmatched-route row in a summary that does not group by route.",
+   "defects": {
+    "software-interaction-log/usage-middleware-not-logging-non-http": {"call": "not-a-defect", "note": "Non-HTTP again."},
+    "software-interaction-log/usage-row-built-from-request-state-only": {"call": "not-a-defect", "note": "Too vague to test; the row is built from the request by design."},
+    "software-interaction-log/usage-route-summary-excludes-unmatched-requests": {"call": "possible", "note": "Fair to ask once; killed by three tests."}
+   }
+  },
+  "usage-row-recorded-for-every-response": {
+   "plain": "The core requirement: every API response becomes a row. Tests exercise real requests and check the row. The tool's two defects were 'write failure swallows the row' (killed by the failure test) and non-HTTP (not killed, not applicable). Because one of two was not killed, the rating dropped to 'partially supported'.",
+   "label": "wrong",
+   "causes": ["defect-outside-requirement"],
+   "explanation": "The requirement is material and is tested. The rating fell because of a defect that cannot occur. This is the clearest example in the run of a generic failure mode dragging down a well-tested requirement.",
+   "agent": "Tool issue: lifespan is not a response, the API has no websockets.",
+   "defects": {
+    "usage-row-recorded-for-every-response/middleware-skips-non-http-scopes": {"call": "not-a-defect", "note": "Non-HTTP again. Appears under five different obligations in this run."},
+    "usage-row-recorded-for-every-response/write-failure-swallows-row-insert": {"call": "probable", "note": "Good one to ask; the dedicated test kills it."}
+   }
+  },
+  "middleware-writes-after-response": {
+   "plain": "The task says the row is written after the response is sent, in its own transaction, so a failed request is still logged. There is a test that records the order of events and asserts 'response sent' comes before 'usage written'. The tool injected a mutant for 'writes before the response completes' and reports that no test caught it, but the stored review does not say what the edit was, so I cannot tell whether the mutant actually moved the write or did something cosmetic.",
+   "label": "wrong",
+   "causes": ["existing-test-not-mapped", "unexplained-survivor"],
+   "explanation": "The requirement is material and a test targets exactly this ordering. Low confidence: a surviving mutant on exactly this property is the one thing in this run that could be real. Worth opening the mutation record for this defect before closing it.",
+   "agent": "Tool issue (grouped with item 7).",
+   "defects": {
+    "middleware-writes-after-response/writes-before-response-completes": {"call": "probable", "note": "Real failure mode for this requirement. A test asserts the order, yet the mutant survived and the edit is not recorded."},
+    "middleware-writes-after-response/skips-non-http-scopes": {"call": "not-a-defect", "note": "Non-HTTP again."}
+   }
+  },
+  "record-web-app-page-views": {
+   "plain": "The endpoint for page views exists and is tested (route stripping, entity extraction, no-entity case). All three enumerated defects were killed. The tool still rated it 'partially supported' and recommended simulating the web app's navigation, which the task's first scope exclusion says is later work.",
+   "label": "wrong",
+   "causes": ["scope-exclusion-ignored"],
+   "explanation": "Every defect was killed by a test; the recommendation asks for something the task excludes.",
+   "agent": "Tool issue: exclusion-01 rules it out.",
+   "defects": {
+    "record-web-app-page-views/page-view-call-not-wired": {"call": "not-a-defect", "note": "The web app does not exist (exclusion 1)."},
+    "record-web-app-page-views/page-view-missing-entity-id": {"call": "possible", "note": "Killed, and the task allows a view without an entity."},
+    "record-web-app-page-views/page-view-route-stripping-drops-entity": {"call": "probable", "note": "Query/fragment stripping is exactly where a slip would happen; killed."}
+   }
+  },
+  "web-app-calls-on-navigation": {
+   "plain": "The tool made 'the web app calls POST /usage/view on navigation' an obligation and rated it 'unclear / unsupported'. The task says, under Scope exclusions, that the web app does not exist and making it call this endpoint is later work.",
+   "label": "wrong",
+   "causes": ["scope-exclusion-ignored"],
+   "explanation": "Explicitly excluded by the task. This one also drives the 'not fully implemented' half of the verdict.",
+   "agent": "Tool issue, already noted.",
+   "defects": {
+    "web-app-calls-on-navigation/not-wired-navigation-hook": {"call": "not-a-defect", "note": "Excluded."},
+    "web-app-calls-on-navigation/wrong-method-for-view-call": {"call": "not-a-defect", "note": "Misreads the recorded VIEW method as the HTTP method of the call."}
+   }
+  },
+  "return-matching-rows-and-daily-summary": {
+   "plain": "The admin endpoint returns rows and a per-day summary. The tool found 'no mapped test', yet three tests exist: the mixed-day report, filtering by owner and client (with non-matching rows on the same day, which is exactly the tool's own recommended test), and a multi-day summary. Of the three defects, one mutant survived (a day with matching rows missing from the summary) but the edit is not recorded; reading the code, the summary's client grouping has no extra filter, so any matching row puts its day in the summary.",
+   "label": "wrong",
+   "causes": ["existing-test-not-mapped", "unexplained-survivor"],
+   "explanation": "The tool recommended a test that already exists, word for word. The surviving mutant deserves a look, but the code and the multi-day test both argue against the described defect.",
+   "agent": "Tool issue: existing tests not mapped.",
+   "defects": {
+    "return-matching-rows-and-daily-summary/daily-summary-omits-days-with-only-nonmatching-rows": {"call": "possible", "note": "Mutant survived, edit unknown. The code's client grouping covers every matching row, so a day cannot vanish as described."},
+    "return-matching-rows-and-daily-summary/entity-pages-counts-only-view-method": {"call": "not-a-defect", "note": "'Entity pages' are page views by definition; counting API GETs would be wrong."},
+    "return-matching-rows-and-daily-summary/rows-and-summary-can-disagree-on-filtering": {"call": "probable", "note": "Reasonable failure mode; the same `where` is passed to both and a test checks it."}
+   }
+  },
+  "usage-rows-retention-180-days": {
+   "plain": "Rows older than 180 days are pruned by a nightly script. The boundary test (181 days deleted, 179 kept) kills the 'wrong side of the cutoff' defect. The other two defects are 'the job is never scheduled' (the task excludes scheduler setup) and 'rows are not pruned at write time' (the task says a nightly job, not write-time pruning).",
+   "label": "wrong",
+   "causes": ["scope-exclusion-ignored", "defect-contradicts-task-or-design"],
+   "explanation": "The one real failure mode is tested. The other two are excluded or contradict the task.",
+   "agent": "Tool issue: recommends pruning at write time, contradicting the task.",
+   "defects": {
+    "usage-rows-retention-180-days/prune-only-deletes-older-than-cutoff": {"call": "probable", "note": "Off-by-one on the cutoff is a classic; killed by two tests."},
+    "usage-rows-retention-180-days/retention-job-not-scheduled": {"call": "not-a-defect", "note": "Exclusion 2: no scheduler setup."},
+    "usage-rows-retention-180-days/usage-table-never-pruned-on-write": {"call": "not-a-defect", "note": "The task specifies a nightly job."}
+   }
+  },
+  "nightly-job-prunes-usage-rows": {
+   "plain": "Same retention requirement, split off as 'pruned by a nightly job'. The only defect is 'nothing schedules it', which the task excludes. The job's entry point (`prune_usage.main`) is called directly by a test.",
+   "label": "wrong",
+   "causes": ["scope-exclusion-ignored", "existing-test-not-mapped"],
+   "explanation": "Excluded by the task, and the entry point is tested anyway.",
+   "agent": "Tool issue: exclusion-02; the entry point is tested.",
+   "defects": {
+    "nightly-job-prunes-usage-rows/prune-job-not-scheduled": {"call": "not-a-defect", "note": "Excluded."}
+   }
+  },
+  "mixed-web-and-mcp-usage-visible-in-admin-endpoint": {
+   "plain": "This is the task's own definition of done: a day of mixed web and MCP use visible per user and per tool. A test builds exactly that day and checks every summary field. The tool's second defect is about multi-day reports, which the task does not ask for ('a day') and which a separate multi-day test covers anyway. That mutant survived with no recorded edit.",
+   "label": "wrong",
+   "causes": ["existing-test-not-mapped", "defect-outside-requirement", "unexplained-survivor"],
+   "explanation": "The done-criterion is tested directly. The multi-day concern is beyond the requirement and covered elsewhere.",
+   "agent": "Tool issue: the task asks for 'a day'; multi-day is covered by another test.",
+   "defects": {
+    "mixed-web-and-mcp-usage-visible-in-admin-endpoint/admin-usage-summary-omits-mcp-tool-breakdown": {"call": "probable", "note": "Directly what the requirement asks; killed."},
+    "mixed-web-and-mcp-usage-visible-in-admin-endpoint/admin-usage-report-does-not-separate-web-and-mcp-by-day": {"call": "possible", "note": "Beyond 'a day'. Survived with no recorded edit; a multi-day test exists."}
+   }
+  },
+  "web-and-mcp-not-yet-present": {
+   "plain": "The tool took the scope exclusion itself ('the web app and the MCP server do not exist yet') and made it an obligation, then marked it 'not addressed' because the change adds an endpoint the web app will call and a column the MCP server will fill. This is one of the three 'not fully implemented' items behind the verdict.",
+   "label": "wrong",
+   "causes": ["non-requirement-sentence", "scope-exclusion-ignored"],
+   "explanation": "A scope exclusion is a statement about what the change need not do. It cannot be 'not addressed'.",
+   "agent": "Tool issue, new note.",
+   "defects": {
+    "web-and-mcp-not-yet-present/web-app-introduced": {"call": "not-a-defect", "note": "Building the server side of a future client is the task."},
+    "web-and-mcp-not-yet-present/mcp-server-introduced": {"call": "not-a-defect", "note": "Storing a tool_name column is not building an MCP server."}
+   }
+  },
+  "headers-and-view-call-later-work": {
+   "plain": "The second half of the same scope exclusion, also turned into a 'not addressed' obligation. Its defects claim the change added web-app headers and a navigation call; it added neither (the test suite sends headers, which is what a test client does).",
+   "label": "wrong",
+   "causes": ["non-requirement-sentence", "scope-exclusion-ignored"],
+   "explanation": "Same as item 33. The defect descriptions are also factually false about the diff.",
+   "agent": "Tool issue, new note.",
+   "defects": {
+    "headers-and-view-call-later-work/web-app-headers-added": {"call": "not-a-defect", "note": "Tests sending headers is not the web app sending them."},
+    "headers-and-view-call-later-work/navigation-call-added": {"call": "not-a-defect", "note": "No navigation code exists in the repo."}
+   }
+  },
+  "unrequested-1": {
+   "plain": "The tool flags that the admin report includes the full `rows` list as extra, unrequested behavior. The task sentence reads 'It returns the matching rows and a daily summary'.",
+   "label": "wrong",
+   "causes": ["task-misread"],
+   "explanation": "The rows are requested in so many words.",
+   "agent": "Tool issue."
+  },
+  "unrequested-2": {
+   "plain": "The middleware stores `tool_name` from an `X-Tool` header on any request that carries one, not only MCP requests. The task says the MCP server sets the header; the code does not check which client sent it. True, and the natural way to implement it.",
+   "label": "immaterial",
+   "causes": ["accurate-not-blocking"],
+   "explanation": "Accurate observation with no consequence: only the MCP server sends the header. Nobody would ask for a client check here.",
+   "agent": "Harmless, low. Tool issue."
+  },
+  "unrequested-3": {
+   "plain": "The migration enables row-level security on the usage table and adds a SELECT policy for the admin role. The task did not ask for this, but every other table in the repo has RLS and a test asserts it for all model tables.",
+   "label": "immaterial",
+   "causes": ["repo-convention", "accurate-not-blocking"],
+   "explanation": "Following the repo's security convention is what a reviewer wants to see, not flag. Fine as a low-severity note, should not touch the verdict.",
+   "agent": "Matches migration 0003. Kept."
+  },
+  "unrequested-4": {
+   "plain": "The test database helper now derives a per-worker database name from an `ACCEPTANCE_WORKER` environment variable. This is unrelated to telemetry; it exists so the acceptance tool itself can run the tests in parallel.",
+   "label": "immaterial",
+   "causes": ["accurate-not-blocking"],
+   "explanation": "Correct and useful as an unrequested-change note: a human reviewer would want to know. It should not block, which is how the tool presented it (low).",
+   "agent": "True, not part of #5. Presented at the gate."
+  }
+ }
+}
