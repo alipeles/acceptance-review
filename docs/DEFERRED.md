@@ -8092,7 +8092,7 @@ the record.
 - **What's wrong:** #436's Acceptance asks for #432's issue body as a fixture, so its transcript is now in the corpus. The rule exists so that this repo's diffs and task text do not end up in committed fixtures; an issue body is text already public on GitHub, and no diff is involved. `test_the_committed_corpus_holds_only_archetype_content` still passes on it.
 - **Why I didn't act:** followed the issue, which is authoritative; the rule's wording is the owner's to change.
 - **Drafted fix:** reword the comment to "never against this repo's diffs or dogfood task files; an issue body named by an issue's Acceptance is allowed". Alternative: replace the #432 fixture with a synthetic mandate of the same shape and edit #436's Acceptance to match.
-- **Status:** decided 2026-11-02 by the owner: keep the rule, swap the text. #432's body is replaced in `tests/fixtures/claims/` by a synthetic mandate of the same shape, and its transcript removed from the corpus.
+- **Status:** done 2026-11-02: the owner kept the rule and swapped the text. Merged as #448: `tests/fixtures/claims/unrecognised-headings.md` replaces #432's body, and its transcript left the corpus.
 
 ### [2026-11-02] #437 should route the `decompose` command through synthesis too
 - **Kind:** filing (comment on #437)
@@ -8103,5 +8103,5 @@ the record.
 - **Why I didn't act:** it changes #437's Acceptance; the owner approves backlog edits.
 - **Drafted fix:** comment on #437:
   > Add to Acceptance: the `decompose` command goes through claims and synthesis too, and on #432's issue body as filed (`dogfood-logs/432-decompose-run1/mandate.md`) it prints at least one obligation per Acceptance bullet. Today it prints none (`dogfood-logs/436-decompose-run1/`, `dogfood-logs/432-decompose-run1/`).
-- **Status:** approved by the owner 2026-11-02. The path was then changed from `tests/fixtures/claims/432-issue-as-filed.md`, which the corpus decision removes, to the `dogfood-logs/` copy; re-shown for approval before posting.
+- **Status:** posted on #437 2026-11-02 (approved by the owner, re-approved after the path change to the `dogfood-logs/` copy).
 
