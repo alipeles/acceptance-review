@@ -52,6 +52,7 @@ from acceptance.llm import ANTHROPIC, SERVED_FROM_PROVIDER
 # presentation order, not a whitelist. `tests/test_usage.py` fails when a stage
 # the pipeline can issue is missing from this tuple.
 _PIPELINE_ORDER = (
+    "unit classification",
     "decompose",
     "decompose-summary",
     "obligation linking",

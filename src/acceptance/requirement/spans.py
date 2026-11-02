@@ -28,7 +28,14 @@ import re
 from acceptance.review_state import RequirementRef
 from acceptance.source_ref import TextSpan
 
-__all__ = ["locate_in_text", "locate_within", "normalise", "offerable", "quotable_spans"]
+__all__ = [
+    "locate_in_text",
+    "locate_within",
+    "normalise",
+    "offerable",
+    "quotable_spans",
+    "sentence_spans",
+]
 
 # The double quote is refused inside a string literal by a strict response
 # schema. Observed at #340's Gate 1, where a task file containing one aborted the
@@ -103,6 +110,32 @@ def quotable_spans(text: str) -> list[str]:
         if candidate and candidate not in offered:
             offered.append(candidate)
     return offered
+
+
+def sentence_spans(span: TextSpan) -> list[TextSpan]:
+    """`span` split into its sentences, each with its own offsets into the source.
+
+    The same break rule `quotable_spans` offers quotations by, so a claim and a
+    quotation agree on where a sentence ends. Each piece is trimmed and its
+    offsets moved with it, so `source[start:end] == text` holds for every piece
+    exactly as it holds for `span`.
+
+    A span with no sentence break comes back as one piece. A fragment that is
+    only whitespace yields nothing.
+    """
+    pieces: list[TextSpan] = []
+    cursor = 0
+    for found in [*_SENTENCE_BREAK.finditer(span.text), None]:
+        stop = len(span.text) if found is None else found.start()
+        raw = span.text[cursor:stop]
+        stripped = raw.strip()
+        if stripped:
+            leading = len(raw) - len(raw.lstrip())
+            start = span.start + cursor + leading
+            pieces.append(TextSpan(text=stripped, start=start, end=start + len(stripped)))
+        if found is not None:
+            cursor = found.end()
+    return pieces
 
 
 def locate_within(requirement: RequirementRef, quote: str) -> TextSpan | None:

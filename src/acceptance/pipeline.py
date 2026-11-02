@@ -70,6 +70,7 @@ from acceptance.mutation.verdicts import (
     verdicts_from,
 )
 from acceptance.mutation.verification import verify_attempts
+from acceptance.requirement.claims import build_claims
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.ledger import LedgerEntry
 from acceptance.requirement.linking import link_duplicate_obligations
@@ -424,6 +425,11 @@ def run_review(
     unusable = UnusableAnswerLog()
 
     parsed = parse_task_file(task_text)
+    # Claims (#436): every unit of the mandate, decided as background or not,
+    # and a verbatim claim from each one that is not. Persisted for synthesis
+    # (#437) to build obligations from; nothing downstream reads it yet, so the
+    # obligation path below is unchanged and no other stage's request moves.
+    claim_set = build_claims(parsed, client, unusable)
     # `ledger_prior` is a DIFFERENT kind of prior from `prior` above, and the two
     # are deliberately not merged. `prior` is a stored Review, selected by git
     # ancestry, and it carries JUDGEMENTS forward — the ratings over an obligation
@@ -723,6 +729,7 @@ def run_review(
         # property of review state that every later stage and the report read
         # from one place (M1.2.r1).
         requirement_map=decomposition.requirement_map,
+        claim_set=claim_set,
         open_questions=open_questions,
         defect_sets=defect_sets,
         # Both provenances, in one list, distinguished by `PairVerdict.tier`.

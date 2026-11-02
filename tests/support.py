@@ -472,6 +472,16 @@ def _completed(response: dict, **kwargs) -> dict:
     """
     if not isinstance(response, dict):
         return response
+    # Unit classification (#436): every unit feeds claims unless a fixture says
+    # otherwise. The ids come from the call's own enum, because no fixed dict can
+    # name the units of a mandate it never saw.
+    if _schema_name(**kwargs) == "_UnitDecisions" and "decisions" not in response:
+        return {
+            "decisions": [
+                {"unit_id": unit_id, "reason": "test double", "decision": "feeds"}
+                for unit_id in _supplied_enum("unit_id", **kwargs)
+            ]
+        }
     # The summary pass has its own schema, and a fixture written for the
     # decomposer says nothing it can use. Answered here so an unrelated test does
     # not have to know the stage exists.
@@ -618,6 +628,8 @@ def client_returning(
         chosen = response
         if _schema_name(**kwargs) == "_SummarySpans":
             chosen = summary if summary is not None else {}
+        elif _schema_name(**kwargs) == "_UnitDecisions":
+            chosen = {}
         return _fake_response(json.dumps(_completed(chosen, **kwargs)))
 
     return ModelClient(
@@ -803,6 +815,9 @@ def client_dispatching(
 # judgment. Since M7.4's shared pipeline, `run_check` makes real model calls, so
 # these tests must inject a client instead of relying on an empty skeleton.
 _EMPTY_BY_SCHEMA = {
+    # Unit classification (#436). Completed by `_completed` from the call's unit
+    # ids, every unit marked `feeds`.
+    "_UnitDecisions": {},
     "_Decomposition": {
         "obligations": [],
         "open_questions": [],
