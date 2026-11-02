@@ -8018,7 +8018,7 @@ the record.
   > The Cost section's premise was wrong, and so was the reason this issue went first in M11 (decomposition redesign, #435). The request key is computed from `ModelClient.build_request`, which knows nothing about providers: the cache breakpoint, the Messages API request shape and the dropped temperature and seed are applied after the key is taken. Moving Claude onto the native adapter therefore re-keys nothing, and every recording made through LiteLLM still replays. The full suite confirms it on the #432 branch.
   >
   > Acceptance item 4 ("the corpus is re-recorded once") is therefore not forced by the code change. Decided 2026-11-02: no full re-record. Instead a few prompt tests are re-recorded live through the native adapter, to confirm Claude's answers come back in shape and with sensible cost figures. Benchmark figures stay comparable across this change.
-- **Status:** open
+- **Status:** posted on #432 2026-11-02 (approved by the owner).
 
 ### [2026-11-02] The rating-regression tests cannot create their worktrees inside the sandbox
 - **Kind:** defect
@@ -8028,7 +8028,7 @@ the record.
 - **What's wrong:** every test in `test_rating_regression.py` that builds a corpus case fails with `git worktree add` exiting 128. Run by hand, git says `could not create directory of '…/AI_acceptance_tool/.git/worktrees/wt0': Operation not permitted`. Worktree registrations live in the main checkout's `.git`, which the sandbox protects. The same tests passed in a sandboxed run earlier in the same session, so the protection appears to tighten during a session; the sandbox's own description of protected paths grew from "83 more" to "104 more" entries in that time. Interrupted runs also leave stale registrations (`wt0`, `wt1`, `wt2` under `pytest-500`), which the sandbox will not let `git worktree prune` remove. With the sandbox off, all 35 tests in the file pass on the #432 branch.
 - **Why I didn't act:** outside #432, and the right fix depends on whether the sandbox or the test should give way.
 - **Drafted fix:** child of #186 (benchmark umbrella). Options, cheapest first: (a) note in `docs/agent-notes/environment.md` that `tests/benchmark/test_rating_regression.py` needs the sandbox off, with the symptom; (b) materialize each corpus revision with `git archive <sha> | tar -x` into `tmp_path` instead of a registered worktree, which needs no write to `.git` and leaves nothing to prune. (b) removes the problem; check first that no test relies on the materialized tree being a git checkout.
-- **Status:** open
+- **Status:** filed 2026-11-02 as #446, a sub-issue of #186 (approved by the owner).
 
 ### [2026-11-02] Comment on #373: when nothing is read, the "NOT READ" warning is not printed either
 - **Kind:** filing (comment asserting a new finding)
@@ -8041,7 +8041,7 @@ the record.
   > A second instance, worse than the first. At #372 the report printed `!! NOT READ AS ANY REQUIREMENT`. When *no* requirement is found, it prints nothing of the kind: `cli.py::render_decomposition` returns `_render_flat(result)` before `_unread_source` runs, so a mandate that went entirely unread reports "Obligations: (none)" with no warning. Seen running `decompose` on #432's issue text as filed (`dogfood-logs/432-decompose-run1/`) and with its headings mapped to recognised ones (`run2/`, where all content sits in bullets under `## Task`).
   >
   > If #436 does not replace this path, the fix here has two parts: read lists under Task as behaviour, and print the unread warning on the no-requirement path too.
-- **Status:** open
+- **Status:** posted on #373 2026-11-02 (approved by the owner).
 
 ### [2026-11-02] #436 should state that blocks the parser cannot place still yield claims
 - **Kind:** filing (edit to an issue's Acceptance)
@@ -8052,4 +8052,4 @@ the record.
 - **Why I didn't act:** it changes the plan; the owner approves backlog edits.
 - **Drafted fix:** add to #436's Acceptance:
   > - A block the parser cannot place under a known heading — a bullet list under `## Task`, text under a heading it does not recognise — still yields claims unless the model marks it background. #432's issue body as filed (`dogfood-logs/432-decompose-run1/mandate.md`) yields at least one claim per Acceptance bullet.
-- **Status:** open
+- **Status:** added to #436's Acceptance 2026-11-02 (approved by the owner).
