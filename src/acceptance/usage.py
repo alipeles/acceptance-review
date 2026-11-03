@@ -53,6 +53,7 @@ from acceptance.llm import ANTHROPIC, SERVED_FROM_PROVIDER
 # the pipeline can issue is missing from this tuple.
 _PIPELINE_ORDER = (
     "unit classification",
+    "synthesis",
     "decompose",
     "decompose-summary",
     "obligation linking",

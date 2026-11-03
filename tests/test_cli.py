@@ -188,6 +188,7 @@ def test_check_records_determinism_flags_in_provenance(
             "coverage classification": "openai/gpt-5",
             "decompose": "openai/gpt-5",
             "decompose-summary": "openai/gpt-5",
+            "synthesis": "openai/gpt-5",
             "unit classification": "openai/gpt-5",
             "unrequested-change detection": "openai/gpt-5",
         },
@@ -200,6 +201,7 @@ def test_check_records_determinism_flags_in_provenance(
                 "coverage classification",
                 "decompose",
                 "decompose-summary",
+                "synthesis",
                 "unit classification",
                 "unrequested-change detection",
             )

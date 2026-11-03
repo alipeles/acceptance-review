@@ -34,6 +34,7 @@ destroys the one thing the review exists to detect. Pinned by a test.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal
 
 from pydantic import Field
@@ -67,6 +68,7 @@ from acceptance.requirement.summary import (
 )
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import (
+    ClaimSet,
     DefectSet,
     Disposition,
     Obligation,
@@ -360,11 +362,25 @@ identically. Keep the test framing on the requirement that has it, per THE
 can only see that if you left the framing in."""
 
 
+# The ten types this path answers in, frozen as they were before #437 added the
+# four synthesis types to `ObligationType` (DR-437). The response schema embeds
+# the enum, so offering the four new values here would change every request this
+# stage makes and orphan its recordings, while the path is due to be removed at
+# the switch-over anyway. Same name and description as the original, so the
+# rendered schema is byte-identical.
+_LegacyObligationType = Enum(
+    "ObligationType",
+    {member.name: member.value for member in ObligationType if not member.synthesized},
+    type=str,
+)
+_LegacyObligationType.__doc__ = ObligationType.__doc__
+
+
 # Empty arrays are returned explicitly (StrictResponseModel: no defaults).
 class _DecomposedObligation(StrictResponseModel):
     id: str
     description: str
-    type: ObligationType
+    type: _LegacyObligationType
     importance: str
     explicit: bool
     observable_behavior: str
@@ -513,6 +529,12 @@ class Decomposition(PersistableModel):
     # a later stage — a bare `decompose` leaves it empty, and that is correct:
     # derivation performs no linking (DR-204).
     merge_decisions: list[MergeDecision] = Field(default_factory=list)
+    # The claims and the obligations synthesis built from them (#436, #437), set
+    # by the `decompose` command so it can show both decompositions while the
+    # pipeline still reviews the per-requirement one. `decompose` itself never
+    # sets these; they leave with this class at the switch-over.
+    claim_set: ClaimSet | None = None
+    synthesized_obligations: list[Obligation] = Field(default_factory=list)
 
 
 def _user_prompt(
@@ -805,7 +827,7 @@ def _obligations_from(
             Obligation(
                 id=_unique(item.id, seen_ids),
                 description=item.description,
-                type=item.type,
+                type=ObligationType(item.type.value),
                 importance=_importance(item.importance),
                 explicit=item.explicit,
                 observable_behavior=item.observable_behavior,
