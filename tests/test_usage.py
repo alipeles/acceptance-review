@@ -218,9 +218,11 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
     from acceptance.requirement.linking import _STAGE as LINKING
     from acceptance.requirement.obligations import _STAGE as DECOMPOSE
     from acceptance.requirement.summary import SUMMARY_STAGE
+    from acceptance.requirement.synthesis import SYNTHESIS_STAGE
 
     declared = {
         UNIT_STAGE,
+        SYNTHESIS_STAGE,
         DECOMPOSE,
         SUMMARY_STAGE,
         LINKING,

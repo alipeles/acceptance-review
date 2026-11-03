@@ -558,6 +558,39 @@ _APPROVED_TRANSCRIPTS = {
         "renderer",
         "ledger",
     ),
+    # _UnitDecisions, anthropic/claude-sonnet-5-5 — 3 more recording(s) (#437),
+    # the claims step for the three mandates under `tests/fixtures/synthesis/`.
+    "eb3cb562cd51cee9a9cf29a4af336f004e3fba603a732924ff5fac2685b4dbfc.json": (
+        "order list",
+        "report writer",
+    ),
+    "632628cc0a0127b6d210dcdb88a36682462a5ecc3a302ec40197e72750b7889f.json": (
+        "password",
+        "sign-in page",
+    ),
+    "3faae9ebd3448c1f46f8b6aaa2c7229f6bed786f772864b6e5633ec4d4691b91.json": (
+        "CRUD",
+        "shipping addresses",
+    ),
+    # _Synthesis, anthropic/claude-sonnet-5-5 — 4 recording(s) (#437).
+    "ffb9d2c74abdce91e798d6311ff437755cb8af046182ba46bfca134593662e13.json": (
+        "order list",
+        "report writer",
+    ),
+    "2235bdcb38b903c71052e4893d8308caf8cff0d2ba13eca42c51f3bea8ac22c1.json": (
+        "password",
+        "sign-in page",
+    ),
+    "ca18b80ae93cea480af4dd446fe652b35a36e4ab3c4bb00ce3a4cd2902c29993.json": (
+        "shipping addresses",
+        "account page",
+    ),
+    # `tests/fixtures/claims/unrecognised-headings.md`, standing in for #432's
+    # issue body as filed.
+    "8e2bcd50d050110be69d260cde7012ab2cd941ed57740749235c7426899c92fa.json": (
+        "renderer",
+        "ledger",
+    ),
 }
 
 
@@ -635,6 +668,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
         "prompts/test_decomposition_prompt.py",
         "prompts/test_disposition_prompt.py",
         "prompts/test_linking_prompt.py",
+        "prompts/test_synthesis_prompt.py",
     }, f"recorded responses spread beyond the designated capability: {sorted(users)}"
 
 

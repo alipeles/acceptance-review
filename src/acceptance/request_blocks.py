@@ -272,6 +272,7 @@ def authored_prompts() -> dict[str, str]:
 
     modules = [
         "acceptance.requirement.obligations",
+        "acceptance.requirement.synthesis",
         "acceptance.requirement.linking",
         "acceptance.defects.enumeration",
         "acceptance.defects.pair_mapping",

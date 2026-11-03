@@ -95,6 +95,30 @@ class ObligationType(str, Enum):
     HUMAN_REVIEW = "human_review"
     TEST_DEMAND = "test_demand"
 
+    # The four types synthesis assigns (#437, `docs/DR-437-obligation-types.md`).
+    # They replace the ten above, which the per-requirement path still produces
+    # until the issue that switches the pipeline over to synthesis deletes them.
+    REQUESTED_BEHAVIOR = "requested_behavior"
+    CONSTRAINT = "constraint"
+    SCOPE_EXCLUSION = "scope_exclusion"
+    TEST_DELIVERABLE = "test_deliverable"
+
+    @property
+    def synthesized(self) -> bool:
+        """One of the four types synthesis assigns."""
+        return self in SYNTHESIS_TYPES
+
+
+#: The types an obligation built from claims may carry (#437).
+SYNTHESIS_TYPES = frozenset(
+    {
+        ObligationType.REQUESTED_BEHAVIOR,
+        ObligationType.CONSTRAINT,
+        ObligationType.SCOPE_EXCLUSION,
+        ObligationType.TEST_DELIVERABLE,
+    }
+)
+
 
 class DefectType(str, Enum):
     """A way a change can fail an obligation (DR-313, from DR-312 decision 4).
@@ -888,10 +912,15 @@ class Obligation(_Model):
     explicit: bool
     observable_behavior: str
     source_spans: list[TextSpan] = Field(default_factory=list)
-    # The claims that support this obligation (#436). Empty until synthesis
-    # (#437) produces obligations from claims; today's obligations are derived
-    # per requirement and cite their text through `source_spans` instead.
+    # The claims that support this obligation (#436). Filled by synthesis (#437);
+    # obligations from the per-requirement path leave it empty and cite their
+    # text through `source_spans` instead.
     claims: list[Reference] = Field(default_factory=list)
+    # Where the obligation's authority comes from (`docs/decomposition-redesign.md`
+    # §2). Synthesis sets `stated`; the clarification issue (#442) adds the two
+    # `clarified-*` values. An expectation is not an obligation, so `inferred` is
+    # not a value here.
+    provenance: Literal["stated", "clarified-human", "clarified-agent"] = "stated"
 
     @field_validator("claims")
     @classmethod
@@ -902,6 +931,26 @@ class Obligation(_Model):
             if reference.kind != "claim":
                 raise ValueError(f"an obligation's claims must cite claims, not {reference.kind!r}")
         return value
+
+    @model_validator(mode="after")
+    def _synthesized_obligation_is_supported(self) -> Obligation:
+        """An obligation built from claims cites at least one, and a scope
+        exclusion is exactly the obligation satisfied by work not done.
+
+        Keyed on the type because the per-requirement path still produces
+        obligations with no claims, under the old ten types. Once the switch-over
+        deletes those, this is the rule for every obligation (#437).
+        """
+        if self.type.synthesized and not self.claims:
+            raise ValueError(f"obligation {self.id!r} cites no claim")
+        if self.type.synthesized and (
+            (self.type is ObligationType.SCOPE_EXCLUSION) != self.satisfied_by_absence
+        ):
+            raise ValueError(
+                f"obligation {self.id!r}: a scope exclusion, and only a scope "
+                "exclusion, is satisfied by absence"
+            )
+        return self
 
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
@@ -1473,6 +1522,11 @@ class Review(_Model):
     # which text fed the obligation set and which text was set aside as
     # background, with the model's reason for each.
     claim_set: ClaimSet | None = None
+    # The obligations synthesis built from the claims (#437). Recorded beside
+    # `obligation_map`, not in place of it: nothing downstream reads these until
+    # the pipeline is switched over, so a movement in any rating or verdict while
+    # they are only recorded has some other cause (DR-312 decision 5's staging).
+    synthesized_obligations: list[Obligation] = Field(default_factory=list)
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     # One entry per obligation the enumeration stage was asked about (#313).
     # Advisory: nothing here reaches `completion` or any obligation's rating,

@@ -630,6 +630,8 @@ def client_returning(
             chosen = summary if summary is not None else {}
         elif _schema_name(**kwargs) == "_UnitDecisions":
             chosen = {}
+        elif _schema_name(**kwargs) == "_Synthesis":
+            chosen = {"obligations": []}
         return _fake_response(json.dumps(_completed(chosen, **kwargs)))
 
     return ModelClient(
@@ -818,6 +820,9 @@ _EMPTY_BY_SCHEMA = {
     # Unit classification (#436). Completed by `_completed` from the call's unit
     # ids, every unit marked `feeds`.
     "_UnitDecisions": {},
+    # Synthesis (#437): no obligations. Recorded beside the per-requirement set
+    # and read by nothing downstream, so an empty answer changes no other stage.
+    "_Synthesis": {"obligations": []},
     "_Decomposition": {
         "obligations": [],
         "open_questions": [],

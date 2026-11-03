@@ -54,6 +54,7 @@ from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup as lookup_recommendation
 from acceptance.recommendation import render as render_recommendation
 from acceptance.report import render_report
+from acceptance.requirement.claims import build_claims
 from acceptance.requirement.ledger import LedgerStore, new_run_id
 from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import (
@@ -62,6 +63,7 @@ from acceptance.requirement.obligations import (
     build_ledger_entry,
     decompose,
 )
+from acceptance.requirement.synthesis import synthesize
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.rerun import find_prior_review, task_digest
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
@@ -353,7 +355,16 @@ def run_decompose(
             linked=linked,
         )
     )
-    return linked, unusable, run_id
+    # Claims and synthesis (#436, #437), the same two calls `check` makes, so the
+    # obligation set the redesign builds is visible here before the pipeline
+    # switches over to it. Not carried by `--continue`: that is #443's.
+    claim_set = build_claims(parsed, client, unusable)
+    synthesized = synthesize(claim_set, client, unusable)
+    return (
+        linked.model_copy(update={"claim_set": claim_set, "synthesized_obligations": synthesized}),
+        unusable,
+        run_id,
+    )
 
 
 def _report_usage(client: ModelClient) -> None:
@@ -415,14 +426,18 @@ def render_decomposition(result: Decomposition) -> str:
     hand — which is exactly the manual step #202 exists to remove.
 
     Every requirement appears, including the ones that produced nothing.
+
+    When the run built claims, the obligations synthesized from them come first
+    (#437), then the per-requirement decomposition `check` still reviews.
     """
+    synthesized = _render_synthesized(result)
     requirement_map = result.requirement_map
     obligations = {o.id: o for o in result.obligations}
     questions = {q.id: q for q in result.open_questions}
 
     total = len(requirement_map.requirements)
     if not total:
-        return _render_flat(result)
+        return synthesized + _render_flat(result)
 
     lines = [_summary(requirement_map, total), ""]
 
@@ -436,7 +451,63 @@ def render_decomposition(result: Decomposition) -> str:
     lines.extend(_orphan_obligations(result, requirement_map))
     lines.extend(_unraised_questions(result, requirement_map))
     lines.extend(_unread_source(requirement_map))
-    return "\n".join(lines).rstrip() + "\n"
+    return synthesized + "\n".join(lines).rstrip() + "\n"
+
+
+def _render_synthesized(result: Decomposition) -> str:
+    """The obligations synthesized from claims, each with the claims it cites.
+
+    Empty when the run built no claims, so a caller that never ran synthesis
+    renders exactly as before. Claims no obligation cites are listed after the
+    obligations: such a claim is either an aside or a requirement synthesis
+    missed, and only a reader can tell which.
+    """
+    claim_set = result.claim_set
+    if claim_set is None:
+        return ""
+    by_id = {claim.id: claim for claim in claim_set.claims}
+    background = sum(1 for unit in claim_set.units if not unit.feeds)
+    lines = [
+        (
+            f"Obligations synthesized from claims: {len(result.synthesized_obligations)} "
+            f"from {len(claim_set.claims)} claim(s); {background} unit(s) set aside as background"
+        ),
+        "",
+    ]
+    for obligation in result.synthesized_obligations:
+        lines.append(f"  {obligation.id}  {_obligation_bracket(obligation)}")
+        lines.extend(_wrap(obligation.description, indent="     ", hang="     "))
+        lines.extend(
+            _wrap(f"look for: {obligation.observable_behavior}", indent="     ", hang="     ")
+        )
+        for reference in obligation.claims:
+            claim = by_id.get(reference.id)
+            if claim is not None:
+                lines.extend(
+                    _wrap(
+                        f"{claim.id} (line {claim.line}): {_flatten(claim.text)}",
+                        indent="     < ",
+                        hang="       ",
+                    )
+                )
+        lines.append("")
+    if not result.synthesized_obligations:
+        lines.extend(["  (none)", ""])
+    cited = {ref.id for o in result.synthesized_obligations for ref in o.claims}
+    uncited = [claim for claim in claim_set.claims if claim.id not in cited]
+    if uncited:
+        lines.append("Claims no obligation cites:")
+        for claim in uncited:
+            lines.extend(
+                _wrap(
+                    f"{claim.id} (line {claim.line}): {_flatten(claim.text)}",
+                    indent="  - ",
+                    hang="    ",
+                )
+            )
+        lines.append("")
+    lines.extend(["Per-requirement decomposition (what `check` reviews today):", ""])
+    return "\n".join(lines) + "\n"
 
 
 def _unread_source(requirement_map) -> list[str]:
@@ -550,7 +621,12 @@ def _obligation_bracket(obligation) -> str:
     later stage questions — so Gate 1 is where a reader has to see it (#276).
     `satisfied_by_absence` is independent of it and marked separately.
     """
-    flag = "explicit" if obligation.explicit else "inferred"
+    # A synthesized obligation the claims plainly entail is still `stated` (#437,
+    # design §5 step 3), so it is marked "entailed", never "inferred".
+    if obligation.explicit:
+        flag = "explicit"
+    else:
+        flag = "entailed" if obligation.type.synthesized else "inferred"
     parts = [f"{obligation.type.value}/{flag}", obligation.required_evidence.value]
     if obligation.satisfied_by_absence:
         parts.append("satisfied by absence")

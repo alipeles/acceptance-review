@@ -52,6 +52,7 @@ from acceptance.usage import summarize as summarize_usage
 _EMPTY_BY_SCHEMA = {
     # Unit classification (#436) — every unit marked `feeds` by `_completed`.
     "_UnitDecisions": {},
+    "_Synthesis": {"obligations": []},
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
     # The summary pass (#317) — filled in from the request by `_completed`,
     # because a span has to be a substring of the summary the call was shown.
@@ -463,6 +464,7 @@ def _observing_factory(calls):
             calls.append((config.seed, name))
             empty = {
                 "_UnitDecisions": {},
+                "_Synthesis": {"obligations": []},
                 "_Decomposition": {
                     "obligations": [],
                     "open_questions": [],
