@@ -1,0 +1,143 @@
+run 50987e3c6d748fed
+  requirements: 0 derived, 0 carried, 0 revised; 0 decompose call(s)
+  continue this run with: --continue 50987e3c6d748fed
+Model usage by stage:
+  stage                model                                          calls  prompt  output  cached  this run  recorded  time this run
+  -------------------  ---------------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  unit classification  anthropic/claude-sonnet-5-5  1 (1 live / 0 replayed)   1,799     999    0.0%   $0.0136   $0.0136          31.5s
+  synthesis            anthropic/claude-sonnet-5-5  1 (1 live / 0 replayed)   2,832   2,467    0.0%   $0.0314   $0.0314          15.5s
+  this run spent $0.0450 on 2 live call(s); the evidence cost $0.0450 to record (0 call(s) replayed at no cost to this run)
+  of which Anthropic credits: $0.0450 this run, $0.0450 recorded
+  other providers: $0.0000 this run, $0.0000 recorded
+Obligations synthesized from claims: 14 from 12 claim(s); 5 unit(s) set aside as background
+
+  single-call-synthesis  [requested_behavior/explicit, code_and_tests]
+     Obligations are produced by a single model call that receives the full claim set
+     and returns the whole obligation set.
+     look for: Synthesis stage issues exactly one model request containing all claims
+     and parses the obligation set from its response.
+     < claim-03 (line 3): One model call takes the full claim set and produces the
+       obligation set.
+
+  obligation-cites-claims  [requested_behavior/explicit, code_and_tests]
+     Each synthesized obligation carries citations to the claims that support it.
+     look for: Output obligations include claim ids referencing the supporting claims.
+     < claim-04 (line 3): Each obligation cites the claims that support it, carries a
+       type (requested behaviour, constraint, scope exclusion) in the existing type
+       field, and carries provenance `stated`.
+     < claim-10 (line 10): Every obligation cites at least one claim; validation rejects
+       one with none.
+
+  obligation-type-field  [requested_behavior/explicit, code_and_tests]
+     Each synthesized obligation carries one of requested behaviour, constraint or scope
+     exclusion in the existing type field.
+     look for: Obligation records populate the existing type field with one of those
+     values.
+     < claim-04 (line 3): Each obligation cites the claims that support it, carries a
+       type (requested behaviour, constraint, scope exclusion) in the existing type
+       field, and carries provenance `stated`.
+
+  obligation-provenance-stated  [requested_behavior/explicit, code_and_tests]
+     Each synthesized obligation carries provenance `stated`.
+     look for: Obligation records have provenance field equal to `stated`.
+     < claim-04 (line 3): Each obligation cites the claims that support it, carries a
+       type (requested behaviour, constraint, scope exclusion) in the existing type
+       field, and carries provenance `stated`.
+
+  synthesis-includes-plain-entailments  [requested_behavior/explicit, code_and_tests]
+     Synthesis includes obligations plainly entailed by claims, meaning defensible from
+     the cited claim alone, and not ones that cannot be so defended.
+     look for: Entailed obligations appear citing their source claim; synthesis
+     instructions define plainly as defensible from the cited claim alone.
+     < claim-05 (line 3): Synthesis includes what the claims plainly entail, where
+       "plainly" means the model can defend the obligation from the cited claim alone.
+
+  downstream-consume-synthesized  [requested_behavior/explicit, code_and_tests]
+     Mapping, coverage and the verdict stages operate on the synthesized obligations.
+     look for: Downstream stages take synthesized obligations as input, and outputs
+     reference them.
+     < claim-06 (line 5): Downstream stages consume synthesized obligations.
+     < claim-14 (line 14): Mapping, coverage and the verdict run over synthesized
+       obligations; no code path produces obligations directly from lines.
+
+  remove-per-line-path  [requested_behavior/explicit, code_and_tests]
+     The per-line obligation path no longer exists, so no code path produces obligations
+     directly from lines.
+     look for: No per-line obligation function or branch remains in the code;
+     obligations come only from synthesis.
+     < claim-07 (line 5): The per-line obligation path is removed, and the pipeline test
+       that pins the CLI and the benchmark to `run_review` is extended to pin that both
+       go through synthesis.
+     < claim-14 (line 14): Mapping, coverage and the verdict run over synthesized
+       obligations; no code path produces obligations directly from lines.
+
+  pipeline-test-pins-synthesis  [requested_behavior/explicit, code_and_tests]
+     The existing pipeline test also asserts that both the CLI and the benchmark go
+     through synthesis.
+     look for: The pipeline test contains assertions that the CLI and benchmark paths
+     invoke synthesis, in addition to the run_review pin.
+     < claim-07 (line 5): The per-line obligation path is removed, and the pipeline test
+       that pins the CLI and the benchmark to `run_review` is extended to pin that both
+       go through synthesis.
+
+  re-record-once  [requested_behavior/explicit, code_and_tests]
+     Recorded model responses are re-recorded once in this change.
+     look for: Updated recordings appear in the change from a single re-record.
+     < claim-09 (line 7): Re-record once in this issue; pruning and expectations (issues
+       3 and 4 in the sequence) change the same stage's requests and should land before
+       any re-recording is relied on for benchmark figures.
+
+  validation-rejects-uncited  [requested_behavior/explicit, code_and_tests]
+     Validation rejects any obligation with no cited claims.
+     look for: An obligation with an empty claim list fails validation with an error.
+     < claim-10 (line 10): Every obligation cites at least one claim; validation rejects
+       one with none.
+
+  two-things-claim-split  [requested_behavior/explicit, code_and_tests]
+     A claim stating both a behaviour and a constraint such as implement X using Y
+     yields a requested-behaviour obligation and a constraint obligation, both citing
+     that claim.
+     look for: For such a claim, output has two obligations of types requested behaviour
+     and constraint, each citing the claim.
+     < claim-11 (line 11): A claim saying two things ("implement X using subsystem Y")
+       yields a requested-behaviour obligation and a constraint obligation, both citing
+       that claim.
+
+  merge-claims-same-behaviour  [requested_behavior/explicit, code_and_tests]
+     Two claims describing the same behaviour yield a single obligation citing both
+     claims.
+     look for: Output has one obligation whose citations include both claims, not two
+     separate obligations.
+     < claim-12 (line 12): Two claims about one behaviour yield one obligation citing
+       both.
+
+  crud-yields-delete  [requested_behavior/explicit, code_and_tests]
+     A claim asking for a CRUD interface for X yields a delete obligation citing that
+     claim, with provenance `stated` and no open question.
+     look for: Synthesis of a CRUD claim outputs a delete obligation citing it,
+     provenance stated, with no open question attached.
+     < claim-13 (line 13): "A CRUD interface for X" yields a delete obligation citing
+       that claim, provenance `stated`, with no open question.
+
+  regression-fixtures  [requested_behavior/explicit, code_and_tests]
+     Regression fixtures under tests/fixtures/ pin the two-things split, the two-claims
+     merge, and the CRUD delete behaviours.
+     look for: Fixture files under tests/fixtures/ cover those three cases and tests
+     assert the expected obligations.
+     < claim-11 (line 11): A claim saying two things ("implement X using subsystem Y")
+       yields a requested-behaviour obligation and a constraint obligation, both citing
+       that claim.
+     < claim-12 (line 12): Two claims about one behaviour yield one obligation citing
+       both.
+     < claim-13 (line 13): "A CRUD interface for X" yields a delete obligation citing
+       that claim, provenance `stated`, with no open question.
+     < claim-15 (line 15): Regression fixtures under `tests/fixtures/` pin the three
+       bullets above.
+
+Per-requirement decomposition (what `check` reviews today):
+
+Obligations:
+  (none)
+
+Open questions:
+  (none)

@@ -1,0 +1,153 @@
+Obligations synthesized from claims: 12 from 16 claim(s); 12 unit(s) set aside as background
+
+  provider-interface-and-adapters  [requested_behavior/explicit, code_and_tests]
+     A single internal LLM interface dispatches each request to a per-provider adapter
+     chosen by the provider the model name states (via llm.provider_of), so the provider
+     decides the code path.
+     look for: Requests for different providers are routed through the common interface
+     to different adapters selected by llm.provider_of.
+     < claim-13 (line 18): **One small interface of our own, one adapter per provider**,
+       chosen by the provider the model name states (`llm.provider_of`, from #415).
+     < claim-14 (line 18): The provider decision then picks the code path, not only the
+       cache and batch behaviour.
+
+  use-provider-of-for-selection  [constraint/explicit, code_only]
+     Adapter selection uses the existing llm.provider_of function rather than new model-
+     name parsing.
+     look for: The adapter selection code calls llm.provider_of.
+     < claim-13 (line 18): **One small interface of our own, one adapter per provider**,
+       chosen by the provider the model name states (`llm.provider_of`, from #415).
+
+  native-anthropic-adapter  [requested_behavior/explicit, code_and_tests]
+     Claude model runs are served by a native Anthropic adapter that supports batching,
+     cache breakpoints, exact token counts and exact cost.
+     look for: A Claude run goes through the native Anthropic adapter, with batching and
+     cache breakpoints working and exact token counts and costs reported.
+     < claim-15 (line 19): **A native Anthropic adapter** on the official SDK for the
+       main path, where batching, cache breakpoints, exact token counts and exact cost
+       matter.
+     < claim-25 (line 34): A Claude run goes through the native adapter: its recorded
+       usage and cost come from Anthropic's response, with no hand correction for
+       batches.
+
+  anthropic-adapter-uses-official-sdk  [constraint/explicit, code_only]
+     The native Anthropic adapter is implemented on the official Anthropic SDK rather
+     than LiteLLM.
+     look for: The Anthropic adapter imports and uses the official anthropic SDK and
+     does not call LiteLLM.
+     < claim-15 (line 19): **A native Anthropic adapter** on the official SDK for the
+       main path, where batching, cache breakpoints, exact token counts and exact cost
+       matter.
+
+  anthropic-usage-cost-from-response  [requested_behavior/explicit, code_and_tests]
+     For a Claude run, recorded usage and cost are taken from Anthropic's response, with
+     no manual correction applied for batches.
+     look for: Recorded usage and cost for Claude runs, including batched ones, match
+     values from the Anthropic response and no batch correction code is applied.
+     < claim-25 (line 34): A Claude run goes through the native adapter: its recorded
+       usage and cost come from Anthropic's response, with no hand correction for
+       batches.
+
+  general-litellm-adapter  [requested_behavior/explicit, code_and_tests]
+     Every provider without a native adapter is served by a general adapter built on
+     LiteLLM, so a run on such a provider completes without new code.
+     look for: A run on a non-Anthropic provider, such as an OpenAI-style open-weight
+     host, completes through the LiteLLM-backed adapter.
+     < claim-03 (line 5): Its value is breadth — many providers behind one call — and
+       that still matters: a user may be constrained to particular providers, and
+       cheaper options such as open-weight models are worth measuring.
+     < claim-16 (line 20): **A general adapter through LiteLLM** for every other
+       provider, so a user's choice keeps working without new code.
+     < claim-17 (line 20): Most open-weight hosts (vLLM, Ollama, Together, Fireworks)
+       speak the OpenAI-style API, which LiteLLM covers.
+     < claim-26 (line 35): A run on a provider with no native adapter completes through
+       the general adapter.
+
+  adapters-declare-capabilities  [requested_behavior/explicit, code_and_tests]
+     Each adapter declares its provider's capabilities: structured output, cache
+     breakpoints, batching, whether seed and temperature are honoured, and where prices
+     come from.
+     look for: Each adapter exposes a capability declaration covering structured output,
+     cache breakpoints, batching, seed and temperature handling, and price source.
+     < claim-19 (line 21): **Each adapter declares its provider's capabilities** —
+       structured output, cache breakpoints, batching, whether seed and temperature are
+       honoured, where prices come from — instead of the client inferring them from the
+       model name.
+
+  client-reads-declared-capabilities  [requested_behavior/explicit, code_and_tests]
+     Cache breakpoints, batching and control handling are determined from the adapter's
+     declared capabilities and not from the model name.
+     look for: The client code has no model-name checks for cache, batch or seed and
+     temperature behaviour and consults adapter capabilities instead.
+     < claim-19 (line 21): **Each adapter declares its provider's capabilities** —
+       structured output, cache breakpoints, batching, whether seed and temperature are
+       honoured, where prices come from — instead of the client inferring them from the
+       model name.
+     < claim-27 (line 36): Cache breakpoints, batching and control handling are read
+       from the adapter's declared capabilities, not from the model name.
+
+  corpus-re-recorded-once  [requested_behavior/explicit, code_and_tests]
+     The whole transcript corpus is re-recorded once, as a single deliberate step, after
+     the Anthropic path moves to the native adapter.
+     look for: A single re-recording of the transcript corpus appears in the change
+     against the new native-adapter request bytes.
+     < claim-22 (line 30): Moving the Anthropic path off LiteLLM changes every request's
+       bytes, so the whole transcript corpus re-records at once and benchmark figures
+       before and after are not comparable — the shared-request-assembly case in
+       `CLAUDE.md`.
+     < claim-23 (line 30): Do it once, deliberately, not inside another task.
+     < claim-28 (line 37): The corpus is re-recorded once, and the re-recording is noted
+       where benchmark figures are compared.
+
+  rerecording-noted-in-benchmarks  [requested_behavior/explicit, code_and_tests]
+     A note about the re-recording and the resulting non-comparability of benchmark
+     figures appears where benchmark figures are compared.
+     look for: The benchmark comparison documentation or output has a note that figures
+     before and after the re-recording are not comparable.
+     < claim-22 (line 30): Moving the Anthropic path off LiteLLM changes every request's
+       bytes, so the whole transcript corpus re-records at once and benchmark figures
+       before and after are not comparable — the shared-request-assembly case in
+       `CLAUDE.md`.
+     < claim-28 (line 37): The corpus is re-recorded once, and the re-recording is noted
+       where benchmark figures are compared.
+
+  decouple-tests-from-litellm-internals  [requested_behavior/entailed, code_and_tests]
+     Tests and replay no longer depend on patching LiteLLM internals, and replay on the
+     Anthropic path stays free of LiteLLM.
+     look for: No test patches litellm.llms.* internals for the Anthropic path, and
+     replay works without importing LiteLLM.
+     < claim-11 (line 12): **Coupling.** Tests patch LiteLLM internals
+       (`litellm.llms.anthropic.chat.handler.get_httpx_client`), and replay needs lazy-
+       import care to stay free of it.
+     < claim-13 (line 18): **One small interface of our own, one adapter per provider**,
+       chosen by the provider the model name states (`llm.provider_of`, from #415).
+
+  no-native-adapter-for-other-providers  [scope_exclusion/explicit, code_only, satisfied by absence]
+     The change does not add native adapters for providers other than Anthropic.
+     look for: A native adapter for a provider other than Anthropic appearing in the
+     diff.
+     < claim-18 (line 20): A native adapter is written only for a provider used heavily
+       enough that exactness pays.
+
+Claims no obligation cites:
+  - claim-24 (line 30): The general adapter alone changes nothing that is recorded
+    today.
+
+Per-requirement decomposition (what `check` reviews today):
+
+Obligations:
+  (none)
+
+Open questions:
+  (none)run 63880ddc87f4a6d9
+  requirements: 0 derived, 0 carried, 0 revised; 0 decompose call(s)
+  continue this run with: --continue 63880ddc87f4a6d9
+Model usage by stage:
+  stage                model                                          calls  prompt  output  cached  this run  recorded  time this run
+  -------------------  ---------------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  unit classification  anthropic/claude-sonnet-5-5  1 (1 live / 0 replayed)   2,630   1,444    0.0%   $0.0197   $0.0197          27.3s
+  synthesis            anthropic/claude-sonnet-5-5  1 (1 live / 0 replayed)   3,180   2,465    0.0%   $0.0321   $0.0321          16.0s
+  this run spent $0.0518 on 2 live call(s); the evidence cost $0.0518 to record (0 call(s) replayed at no cost to this run)
+  of which Anthropic credits: $0.0518 this run, $0.0518 recorded
+  other providers: $0.0000 this run, $0.0000 recorded
+

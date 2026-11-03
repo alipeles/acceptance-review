@@ -8082,7 +8082,7 @@ the record.
 - **What's wrong:** (1) pytest does not read `.env`, so `ACCEPTANCE_RECORD=1 pytest …` fails with `MissingKeyError: ANTHROPIC_API_KEY is not set`; only the CLI calls `load_dotenv`. (2) Inside the sandbox, a live Anthropic call fails with `ConnectionError: Connection error.` after 5 attempts even with `api.anthropic.com` allowed; with the sandbox off it succeeds. I believe this is the same TLS restriction that makes `pip install` need the sandbox off, now that #432 (native Anthropic adapter) sends Claude calls through the `anthropic` SDK. I did not verify the cause.
 - **Why I didn't act:** outside #436.
 - **Drafted fix:** in `tests/conftest.py`, call `load_dotenv(REPO / ".env", override=False)` when `ACCEPTANCE_RECORD=1` (never otherwise, so replay still needs no key). Add a line to `docs/agent-notes/environment.md`: live model calls (recording, `decompose`, `check --mode record`) need the sandbox off, with the `ConnectionError` symptom.
-- **Status:** open
+- **Status:** open. Hit again at #437 (synthesis), both steps, 2026-11-02: worked around with a scratch script that calls `cli.load_env_file` before `pytest.main`, run with the sandbox off.
 
 ### [2026-11-02] The rule against recording this repo's own text now has one exception
 - **Kind:** decision
@@ -8105,3 +8105,46 @@ the record.
   > Add to Acceptance: the `decompose` command goes through claims and synthesis too, and on #432's issue body as filed (`dogfood-logs/432-decompose-run1/mandate.md`) it prints at least one obligation per Acceptance bullet. Today it prints none (`dogfood-logs/436-decompose-run1/`, `dogfood-logs/432-decompose-run1/`).
 - **Status:** posted on #437 2026-11-02 (approved by the owner, re-approved after the path change to the `dogfood-logs/` copy).
 
+
+### [2026-11-02] Record the split of #437 on the issue
+- **Kind:** filing (comment on #437)
+- **Found during:** #437 (synthesis), before coding
+- **Where:** #437's Acceptance
+- **Severity:** should-fix (the issue would otherwise close with two Acceptance items undone)
+- **What's wrong:** the owner split #437 on 2026-11-02 ("build first, switch later") and cut obligation types to four. #437's body still asks for the switch-over and says the type goes "in the existing type field".
+- **Why I didn't act:** backlog edits need approval.
+- **Drafted fix:** comment on #437:
+  > Split on 2026-11-02 (owner's decision). This issue builds synthesis and records its obligations beside today's; the switch-over moves to #449 (switch the pipeline over to synthesized obligations).
+  >
+  > Moved to #449: "Mapping, coverage and the verdict run over synthesized obligations; no code path produces obligations directly from lines", the removal of the per-line path, and extending the pipeline test to pin synthesis.
+  >
+  > Changed: obligation types are four — `requested_behavior`, `constraint`, `scope_exclusion`, `test_deliverable` — not a type added to the existing ten-value field. See `docs/DR-437-obligation-types.md`.
+- **Status:** posted on #437 2026-11-02 (approved by the owner).
+
+### [2026-11-02] File the switch-over issue: the pipeline reviews synthesized obligations
+- **Kind:** filing (new issue, sub-issue of #435, milestone M11, after #437 in the sequence)
+- **Found during:** #437 (synthesis), the owner's split
+- **Where:** `pipeline.py::run_review`, `cli.py` (`decompose`, `classify`), `benchmark/decomposition.py`, `requirement/obligations.py`, `linking.py`, `carry.py`, `ledger.py`, `verdict.py`, `report.py`, `defects/taxonomy.py`, `tests/support.py`
+- **Severity:** blocker for #435 (the redesign is not in use until this lands)
+- **What's wrong:** after #437, synthesized obligations are recorded but nothing reads them.
+- **Why I didn't act:** it is the second half of the split; needs its own session.
+- **Drafted fix:** issue body:
+  > **Title:** Switch the pipeline over to synthesized obligations and remove the per-requirement path
+  >
+  > Child of #435 (decomposition redesign). Follows #437, which builds synthesis and records its obligations in `Review.synthesized_obligations` beside the per-requirement ones. Design doc `docs/decomposition-redesign.md` section 5 steps 3 and 8, section 6; `docs/DR-437-obligation-types.md`.
+  >
+  > Mapping, defect enumeration, coverage, recommendations and the verdict run over synthesized obligations. The per-requirement derivation (`requirement/obligations.py::decompose`, the summary pass, the requirement registry's role in decomposition) is removed, along with the ten old obligation types. Linking stays as the residual de-duplication of section 5 step 8, over synthesized obligations, labelled by claim instead of by requirement.
+  >
+  > What reads the per-requirement output today and has to be rebuilt or retired: the requirement map (the verdict's mandate-coverage bound, the report's coverage block, the `decompose` output), the `--continue` carry of obligations per requirement (retired here; #443 rebuilds carry over claims), `cli.py::run_classify`, `benchmark/decomposition.py::decompose_case`, and the open questions decomposition raised (none are raised until #439).
+  >
+  > Defect enumeration asks about its four general failure modes for a `requested_behavior` obligation and does not enumerate the other three types. This changes enumeration's requests, so its recordings re-record here.
+  >
+  > Archetype ground-truth labels carry the old types. Map the mechanical ones (every behaviour type to `requested_behavior`); for the rest, give the owner one document with each label's evidence, a plain-English explanation and a recommended label, and change none until the owner decides.
+  >
+  > ## Acceptance
+  > - `run_review`, the `decompose` command, `classify` and the benchmark all obtain obligations from synthesis; no code path produces obligations directly from requirements or lines. The test pinning the CLI and the benchmark to `run_review` also pins that both go through synthesis.
+  > - `ObligationType` holds exactly the four types of DR-437.
+  > - Mandate coverage is measured over claims: a claim no obligation cites is reported. Whether an uncited claim bounds the verdict is decided here and raised as a decision, since many uncited claims are legitimate asides.
+  > - The owner has decided every archetype label that did not map mechanically, from a document as described above.
+  > - Spec §7.3's "as built" paragraph describes synthesis, not per-requirement derivation.
+- **Status:** filed as #449 2026-11-02 (approved by the owner), sub-issue of #435, milestone M11.
